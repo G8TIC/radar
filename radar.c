@@ -38,6 +38,14 @@
  *	https://1090mhz.uk
  *
  *
+ * SOURCE REPOSITORY
+ *
+ * The official repository for this code is now Github - see:
+ *
+ *	https://github.com/G8TIC/radar
+ *
+ *
+ *
  * COPYRIGHT
  *
  * Copyright (C) 2023 by Michael J. Tubby B.Sc. MIET and 1090MHz Solutions Ltd.
@@ -50,13 +58,11 @@
  * terms of the GNU General Public License as published by the Free Software Foundation,
  * either version 3 of the License, or at your option any later version.
  *
+ * A copy of the GNU General Public License is included in the file LICENSE.
+ * 
  * This program is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
  * PARTICULAR PURPOSE.  See the GNU General Public License for more details.
- *
- * You can view the GNU General Public License at the following URL:
- *
- * 	https://www.gnu.org/licenses/
  *
  *
  * USAGE
@@ -67,19 +73,19 @@
  *
  * where:
  *
- *	-k <key>	sharing key for your station
- *	-h <hostname>	destination hostname for aggregator, e.g. adsb-in.1090mhz.uk
- *      -p <psk>        pre-shared key for message authentication, defaults to "secret"
- *	-l <ipaddr>	address of device that provides ADS-B source if not localhost
- *	-u <user>	user name to run under, e.g. 'nobody'
- *	-g <group>	group name to run under, e.g. 'nogroup'
- *	-q <qos>	IP Quality of Service using DiffServe values 0-63
- *	-d		daemonise use this for SysV init systems (systemd does this)
- *	-x|xx|xxx	run with debug (-xx for more debug)
- *	-f		produce forwarding stats one per second (foreground only)
- *	-s <seconds>	send radio channel stats every period (default 900 = 15 min)
- *	-t <seconds>	send system telemetry every period (default 900 = 15 min)
- *	-v		print version number and exit
+ *	-k <key>	  sharing key for your station
+ *	-h <hostname>	  destination hostname for aggregator, e.g. adsb-in.1090mhz.uk
+ *      -p <pass-phrase>  pre-shared key for message authentication, defaults to "secret"
+ *	-l <ipaddr>	  address of device that provides ADS-B source if not localhost
+ *	-u <user>	  user name to run under, e.g. 'nobody'
+ *	-g <group>	  group name to run under, e.g. 'nogroup'
+ *	-q <qos>	  IP Quality of Service using DiffServe values 0-63
+ *	-d		  daemonise use this for SysV init systems (systemd does this)
+ *	-x|xx|xxx	  run with debug (-xx for more debug)
+ *	-f		  produce forwarding stats one per second (foreground only)
+ *	-s <seconds>	  send radio channel stats every period (default 900 = 15 min)
+ *	-t <seconds>	  send system telemetry every period (default 900 = 15 min)
+ *	-v		  print version number and exit
  *
  * but normally runs as a service.
  *
@@ -97,15 +103,9 @@
  * aggregator can authenticate the originator and we know the message cannot have been
  * spoofed either.
  *
- * The system defaults to using the pass-phrase "secret" - pelase contact us to set a better
+ * The system defaults to using the pass-phrase "secret" - please contact us to set a better
  * one - we usually obtain pass phrases from random.org
  *
- *
- * SERVICE
- *
- * The radar feeder normally runs as a service - please refer to INSTALL.TXT
- *
- * 
  */
 
 #include <sys/socket.h>

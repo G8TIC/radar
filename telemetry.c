@@ -52,13 +52,6 @@
 #include "arch.h"
 #include "telemetry.h"
 
-
-#if defined(__arm__)
-#define CPU_TEMP_PATH		"/sys/class/thermal/thermal_zone0/temp"		/* ARM CPU temp is zone 0 */
-#else
-#define CPU_TEMP_PATH		"/sys/class/thermal/thermal_zone2/temp"		/* Most PCs are in zone 2 */
-#endif
-
 #define MB			(1024*1024)
 
 #define GCC_MAJOR		__GNUC__
@@ -212,16 +205,6 @@ void telemetry_init(int ival)
                 rc = uname(&uts);
                 
                 if (rc == 0) {
-#if 0
-                        printf("system name = %s\n", uts.sysname);
-                        printf("node name   = %s\n", uts.nodename);
-                        printf("release     = %s\n", uts.release);
-                        printf("version     = %s\n", uts.version);
-                        printf("machine     = %s\n", uts.machine);
-#ifdef _GNU_SOURCE
-                        printf("domain name = %s\n", uts.domainname);
-#endif
-#endif
                         memcpy(telemetry.sysname, uts.sysname, _UTSNAME_SYSNAME_LENGTH);
                         memcpy(telemetry.nodename, uts.nodename, _UTSNAME_NODENAME_LENGTH);
                         memcpy(telemetry.release, uts.release, _UTSNAME_RELEASE_LENGTH);

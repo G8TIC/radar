@@ -28,7 +28,5 @@ uint64_t mstime(void)
 
         ms = (uint64_t)tv.tv_sec * 1000 + (uint64_t)tv.tv_usec / 1000;
         
-        //printf("mstime(): tv_sec=%lu tv_usec=%lu ms=%llu\n", tv.tv_sec, tv.tv_usec, ms);
-        
         return ms;
 }
