@@ -11,7 +11,7 @@ Radar V2 protocol uses UDP port number 5997.
 Each radar update message comprises the following components in a 50-byte UDP/IP message sent to
 the aggregator
 
-
+```
 69 69 00 00 00 00 43 79    95 B4 4A E4 01 0B 06 00   95 00 00 00    03     1F C4 3F 33 1A D2    27    8D 4C AD E6 99 14 7A 22 18 68 0A 7B F7 F9     10 AC F2 F8 D3 34 49 6F
 <-------- key -------->    <--------- ts -------->   <-- seq -->  opcode   <---- mlat ----->   rssi   <-------------- squitter --------------->     <-------- atag ------->
 
@@ -33,15 +33,33 @@ rssi:	  received signal strength indication
 squitter: the 14-byte ADS-B extended squitter
 
 atag:	  the 64-bit authentication tag
-
+```
 
 ### API key
 
-The API key is the unique identi
+The API key is the unique identity of your station as a 64-bit number.
+
+### Timestamp
+
+The timestamp is the number of micro-seconds since the unix epoch on 1st Jan 1970.
 
 ### Opcode
 
 The Opcode is the message type and can be Mode-A/C, Mode-S (short), Mode-S (extended), Telemerty, Radio Stats or Keep-Alive.
 
-### Authentication tag
+### MLAT
+
+The MLAT is the 48-bit multi-lateration clock counter from readsb/dump1090.
+
+### RSSI
+
+The RSSI is the Receiver Signal Strength Indication (RSSI)in dBFS.
+
+### Squitter
+
+Squitter is the 112-bit/14-byte ADS-B Extended Squitter according to RTCA DO-260 / EuroCAD ED-102.
+
+### Atag
+
+The Authentication tag (Atag) is a 64-bit/8-byte truncacted HMAX-SHA256 of the message for integrity checking.
 
