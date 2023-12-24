@@ -1,0 +1,59 @@
+Installation as a service
+=========================
+
+
+1. Introduction
+---------------
+
+The 'radar' feeder normally runs as a background service - it connects to
+whichever ADS-B system you have and forwards data to the 1090MHz UK aggregator.
+
+
+2. Operating Systems
+--------------------
+
+This radar feeder should comnile and operate on most Linux systems from Raspberry
+Pi3 to large Interl systems using Systemd or tradional SysV-init.
+
+
+3. Working assumptions
+----------------------
+
+Some working assumptions include:
+
+  1. You have a resonally modern Linux OS
+  2. You have build-essential and git installed
+  3. You have basic networking tools incuding dig
+  4. You have basic OS tools like lsof
+
+if not then run 'make prepare' which will install them by doing:
+
+   apt-get install build-essential git dig lsof net-tools
+
+
+4. Installation
+---------------
+
+Copy the latest tarball on to your system.
+
+Use the following commands to unpack, compile, install and setup:
+
+    tar zxf radar-0.xx.tar.gz
+    make prepare
+    make
+    make install
+    make setup
+
+
+Setup will try work out:
+
+    1. Whether your DNS is working
+
+    2. What protocols your dump1090 supports
+
+    3. What init system you have
+
+and try and do the "right thing"(tm)
+
+
+Mike

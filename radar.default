@@ -1,0 +1,19 @@
+#
+# Radar - ADS-B feeder to 1090MHz UK
+#
+#
+# Start Radar service automatically at boot
+START_DAEMON="true"
+
+#
+# Command line arguements to be passed to radar service:
+#
+# -k <key>             Sharing key (required)
+# -p <secret>          PSK for digital signatures (preferred - contact us)
+# -l <ipaddr>          Name/IP of local dump1090/readsb instance (default: localhost)
+# -d                   daemon - run in background (SysV not Systemd)
+# -f                   run in forground with stats
+#
+# Example:
+#
+#OPTIONS="-a 0x7654321076543210 -d"
