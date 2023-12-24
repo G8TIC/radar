@@ -34,20 +34,27 @@ Radar works with both systemd and traditional sysv-init systems, the setup scrip
 
 ## Installation
 
+### Obtain the code
+
 Obtain the code from github:
 
-`git clone https://github.com/G8TIC/radar.git
+```
+git clone https://github.com/G8TIC/radar.git
+```
+
+### Compile the code
+
+```
 cd radar
 make
 sudo make install
-sudo make setup`
+sudo make setup
+```
 
+### Configure your system
 
-
-
-## Configururation and Info
-
-To use the Radar forwarder you need an API key/sharing key which is a 64-bit hex number like:
+When you run `make setup` it will run setup.sh which will perform a few
+basic tests and ask for your sharing key. which is a 64-bit hex number like:
 `0x7B432017356401A3`
 
 You can get a sharding key from the 1090MHz website at https://1090mhz.uk or
