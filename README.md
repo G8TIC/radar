@@ -9,6 +9,14 @@ real-time UDP/IP protocol.
 Radar is designed to sit along side other feeders for flight tracking netwoprks such as
 FlightRadar24, FlightAware, OARC and Radar360 and has no known problems sharing resources with them.
 
+If you're looking for a pre-built Docker container image then Ramon KX1T maintains this project as a
+docker image over on his site at: https://github.com/kx1t
+
+If you want to send a feed to 1090MHz UK without using our dedicated feeder
+protocol then we also accept BEAST Reduce Plus from Ultrafeeder and similar,
+see: https://www.1090mhz.uk/sharing.html
+
+
 ## Supported systems
 
 Radar is designed to run 32-bit or 64-bit systems based on ARM or Intel/AMD processors
