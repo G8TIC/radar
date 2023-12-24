@@ -3,7 +3,7 @@
  * Author: Michael J Tubby B.Sc. G8TIC   Date: 27-DEC-1994    Version: 01.00
  */
 
-#include <stdio.h>
+#include <stdint.h>
 
 #include "mstime.h"
 #include "xtimer.h"
@@ -89,4 +89,3 @@ void xtimer_delay(uint32_t delay)
 	while (!xtimer_expired(&t))
 		;
 }
-

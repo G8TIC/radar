@@ -6,14 +6,16 @@
 #ifndef _XTIMER_H
 #define _XTIMER_H
 
-#include <sys/types.h>
+#include <stdint.h>
 
-#define TIMER_STOPPED	0
-#define TIMER_RUNNING	1
-#define TIMER_EXPIRED	2
+enum xtimer_state {
+	TIMER_STOPPED,
+	TIMER_RUNNING,
+	TIMER_EXPIRED
+};
 
 typedef struct {
-	int state;
+	enum xtimer_state state;
 	int64_t started;
 	int64_t expires;
 } xtimer_t;
