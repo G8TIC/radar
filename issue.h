@@ -7,9 +7,9 @@
  */
 
 #ifndef GIT_VERSION
-#define GIT_VERSION ""
-#define GIT_COUNT "0"
-#define GIT_ID ""
+#define GIT_VERSION "2.02-2"
+#define GIT_COUNT "2"
+#define GIT_ID "d287dfe"
 #endif
 
 #ifndef BUILD_HOST
