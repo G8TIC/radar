@@ -1,6 +1,9 @@
-RADAR version 2.0 UDP/IP format
-===============================
+# RADAR UDP/IP wire format
 
+This describes the wire format for Radar V2 protocol.
+
+
+## Message format
 
 69 69 00 00 00 00 43 79    95 B4 4A E4 01 0B 06 00   95 00 00 00    03     1F C4 3F 33 1A D2    27    8D 4C AD E6 99 14 7A 22 18 68 0A 7B F7 F9     10 AC F2 F8 D3 34 49 6F
 <-------- key -------->    <--------- ts -------->   <-- seq -->  opcode   <---- mlat ----->   rssi   <-------------- squitter --------------->     <-------- atag ------->
@@ -8,11 +11,11 @@ RADAR version 2.0 UDP/IP format
 
 Where:
 
-key:	  is the 64-bit station ID or "sharing key"
+key:	  is the 64-bit API key or "sharing key", i.e. receiving station identifier
 
-ys:	  is the message time-stamp in uS
+ts:	  is a 64-bit unsigned message time-stamp in uS
 
-seq:	  is a 32-bit message sequence number - starts at 1 and rolls through zero
+seq:	  is a 32-bit unsigned message sequence number (starts at 1 and rolls through zero)
 
 opcode:	  is the messgae operation code (message type)
 
@@ -24,4 +27,13 @@ squitter: the 14-byte ADS-B extended squitter
 
 atag:	  the 64-bit authentication tag
 
+
+### API key
+
+The API key is the unique identi
+### Opcode
+
+
+
+### Authentication tag
 
