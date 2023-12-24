@@ -1,25 +1,28 @@
 /*
- * chain.h chain base definitions
+ * chain.h -- Operations on double-linked lists
+ * Authors: Dirk Koopman G1TLH, Mike Tubby G8TIC, et. al (c) circa 1994
  *
- * NB: Many of the functions declared here have formal parameters
- * of 'void *' which the actual parameter is a user defined type
- * or object that has the 'reft' at the start.  This is the (deliberate)
- * hack that makes this work. Please do not change this.
+ * NB: Many of the functions declared here have formal parameters of type 'void *'
+ * where the actual parameter is a user defined type or object that has the 'reft'
+ * as it's first element -- this is deliberate and designed/implemented this way.
+ * Please do not change this.
+ *
+ * Include this header in your application code but DO NOT include it in to chain.c
+ * or you will suffer a load of pain!
  *
  */
 
 #ifndef _CHAIN_H
 #define _CHAIN_H
 
+/*
+ * reft: the chain reference type with next and prev pointers
+ */
 typedef struct _reft
 {
 	struct _reft *next, *prev;
 } reft;
 
-#define chain_is_empty chain_empty
-#define chain_empty_test chain_empty
-#define is_chain_empty chain_empty
-#define is_chained chain_is_chained
 
 /*
  * external functions
@@ -40,10 +43,5 @@ extern void chain_flush(reft *);
 extern void *chain_new(void);
 extern void chain_free(void *);
 extern int  chain_count(reft *);
-//extern reft * chain_insert_sorted(reft *, reft *, int (*cmp)(reft *, reft *));
-//extern void chain_sort(reft *, int (*cmp)(reft *, reft *));
-extern reft * chain_insert_sorted(reft *, void *, int (*cmp)(void *, void *));
-extern void chain_sort(reft *, int (*cmp)(void *, void *));
-
 
 #endif

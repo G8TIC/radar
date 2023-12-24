@@ -17,8 +17,6 @@
  * chain_free() - free a chain item (deleting it if it's chained)
  * chain_count() - count the number of items on the chain (not including the base)
  * chain_swap() - swap two items on a chain
- * chain_insert_sorted() - insert an item into a sorted list
- * chain_sort() - sort a chain using quicksort 
  *
  * NB: Please do not include "chain.h" into these routines as it breaks how they work!
  *
@@ -225,43 +223,6 @@ reft * chain_new(void)
 }
 
 
-#if 0
-
-/*
- * FIXME the versions below are newer than the rest of our codebase expects
- * and are incompatible, hence I have retained the old symantics for now
- * Mike -- 21-FEB-2022
- *
- */
-
-
-/*
- * chain_new() - create a new chain base or item in the heap
- */
-void * chain_new(int size)
-{
-	reft *p = malloc(size > sizeof(reft) ? size : sizeof(reft));
-	if (p)
-		chain_init(p);
-	return p;
-}
-
-
-/*
- * chain_newz() - do the same as chain_newz, but zeroise the whole thing
- */
-void * chain_newz(int size)
-{
-	reft *p = malloc(size > sizeof(reft) ? size : sizeof(reft));
-	if (p) {
-		memset(p, 0, size);
-		chain_init(p);
-	}
-	return p;
-}
-
-#endif
-
 
 /*
  * chain_free() - free a chain item (deleting it if it's chained)
@@ -273,21 +234,6 @@ void chain_free(reft *p)
 	free(p);
 }
 
-#if 0
-/*
- * chain_count() - count the number of items on the chain (not including the base)
- */
-int chain_count(reft *base)
-{
-	reft *p = (void *)0;
-	int count = 0; 
-
-	while((p = chain_get_next(base, p))) 
-		++count;
-
-	return count;
-}
-#endif
 
 /*
  * chain_count() - return the count of items on a chain
@@ -305,118 +251,3 @@ int chain_count(reft *base)
 
 	return count;
 }	
-
-
-/*
- * chain_insert_sorted() - insert an object to a sorted chain
- */
-void chain_insert_sorted(reft *base, reft *p, int (*cmp)(reft *, reft *))
-{
-	reft * it;
-	for (it = base->next; it != base; it = it->next) {
-		if (cmp(p, it) < 0)
-			break;
-	}
-	chain_insert(it, p);
-}
-
-
-
-/****
-**
-** Chain sorting using QuickSort
-**
-**
-****/
-
-
-/*
- * Nobody at Thorcom appears to want to admit having written this code ;-)
- *
- * I have tidied it up and got it working (not because there was a bug in the code) after a
- * misunderstanding of what the call-out to the compare routine has to do, more specifically
- * what it has to return, that being three states (less than, equal or greater than) like
- * strcmp() does.
- *
- * Now I have my understanding 'aligned' with the implementation, it works.
- *
- * I have tidied up the function order and formal parameters to use modern style.
- *
- * --Mike 21/03/2022
- *
- */
-
-
-/*
- * chain_sort_partition() - internal part of the partition sort
- */
-static reft * chain_sort_partition(reft *begin, reft *end, reft *pivot, int (*cmp)(reft *, reft *))
-{
-	reft * it, * newbegin;
-	if (pivot != begin) {
-		/* unlink the pivot */
-		pivot->prev->next = pivot->next;
-		pivot->next->prev = pivot->prev;
-
-		/* move it to the beginning */
-		pivot->prev = begin->prev;
-		pivot->next = begin;
-		begin->prev->next = pivot;
-		begin->prev = pivot;
-	}
-
-	newbegin = pivot;
-
-	/* move everything less than the pivot to before the pivot */
-	for (it = begin; it != end; it = it->next) {
-		if (cmp(it, pivot) < 0)	{
-			reft * newit = it;
-			/* prev <-> begin <-> it <-> */
-			/* prev <-> it <-> begin <-> */
-			it->prev->next = it->next;
-			it->next->prev = it->prev;
-			it = it->prev;
-
-			/* move it to the beginning */
-			newit->prev = newbegin->prev;
-			newit->next = newbegin;
-			newbegin->prev->next = newit;
-			newbegin->prev = newit;
-
-			newbegin = newit;
-		}
-	}
-
-	return newbegin;
-}
-
-
-/*
- * chain_sort_impl() - some subfunction of quick sort
- */
-static void chain_sort_impl(reft *begin, reft *end, int (*cmp)(reft *, reft *))
-{
-	/* check for empty list or list of just one element */
-	if (begin != end) {
-		reft * pivot = (cmp(begin, end->prev) < 0) ? begin : end->prev;
-		begin = chain_sort_partition(begin, end, pivot, cmp);
-		chain_sort_impl(begin, pivot, cmp);
-		chain_sort_impl(pivot->next, end, cmp);
-	}
-}
-
-
-/*
- * chain_sort() - Sort a chain of items using the quick ssort alogorithm.
- *
- * Parameters:
- *
- *	base:	the base of the chain that is to be sorted
- *	cmp:	a function to be called to perform the comparision (must return -1, 0 or 1)
- *
- */
-void chain_sort(reft *base, int (*cmp)(reft *, reft *))
-{
-	chain_sort_impl(base->next, base, cmp);
-}
-

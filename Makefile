@@ -1,6 +1,6 @@
 #
 # Makefile - The makefile for the ADS-B Beast Radar Packet Forwarder
-# Author: Miochael J. Tubby B.Sc. MIET  mike@tubby.org
+# Author: Michael J. Tubby B.Sc. MIET  mike@tubby.org
 #
 BASENAME=radar
 BIN=${BASENAME}

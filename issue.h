@@ -14,6 +14,6 @@
 
 #ifndef BUILD_HOST
 #define BUILD_HOST "orac"
-#define BUILD_USER "root"
+#define BUILD_USER "mike"
 #define BUILD_ARCH "x86_64"
 #endif
