@@ -182,9 +182,8 @@ You are welcome to suggest improvements and raise issues or bugs through Github.
 
 ### Copyright
 
-Radar is Copyright (C) 2023 by Michael J. Tubby B.Sc. MIET G8TIC but is open source and
-free for you to use, modify, update and change as you see fit, subject to the
-conditions of the GPL license (below).
+Radar forwarder for 1090MHZ UK ("radae") is Copyright (C) 2023 by Michael J. Tubby B.Sc. MIET
+G8TIC. All Rights Reserved.
 
 ### Acknowledgements
 
@@ -192,31 +191,15 @@ Portions of this project (sha256, hmac-sha256) use open source code contributed 
 
 ### License
 
-This project is licensed under the GNU Public License (GPL) Version 2.0, or at your option, any newer version of the GPL.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
-The GNU Public License is here: https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html
+Refer to file LICENSE supplied with the source code.
 
-### NO WARRANTY
+
+### No Warranty
 
 THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
 WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS
 CONTRIBTUORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-
-
-    <one line to give the program's name and a brief idea of what it does.>
-    Copyright (C) <year>  <name of author>
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-
-
