@@ -6,7 +6,7 @@ Radar allows a wide range of ADS-B receivers based on SDR dongles to receive 109
 forward interesting traffic to the 1090MHz UK aggregator using an optimised, efficient and secure
 real-time UDP/IP protocol.
 
-Radar is designed to sit along side other feeders for flight tracking netwoprks such as
+Radar is designed to sit along side other feeders for flight tracking networks such as
 FlightRadar24, FlightAware, OARC and Radar360 and has no known problems sharing resources with them.
 
 If you're looking for a pre-built Docker container image then Ramon KX1T maintains this project as a
