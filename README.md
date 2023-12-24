@@ -168,8 +168,9 @@ You are welcome to suggest improvements and raise issues or bugs through Github.
 
 ### Copyright
 
-Radar is Copyright (C) 2023 by Michael J. Tubby B.Sc. MIET G8TIC but is free and open source and is
-available for you to use, modify, update and change subject to the GPL license (below).
+Radar is Copyright (C) 2023 by Michael J. Tubby B.Sc. MIET G8TIC but is open source and
+free for you to use, modify, update and change as you see fit, subject to the
+conditions of the GPL license (below).
 
 ### Acknowledgements
 
@@ -177,10 +178,14 @@ Portions of this project (sha256, hmac-sha256) use open source code contributed 
 
 ### License
 
-This is an Open Source project and is Licensed under the GNU Public License (GPL) Version 2.0, or at your option, any newer version of the GPL.
+This project is licensed under the GNU Public License (GPL) Version 2.0, or at your option, any newer version of the GPL.
 
-The GNU Publuic License is here: https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html
+The GNU Public License is here: https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html
 
 ### NO WARRANTY
 
-THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS "AS IS" AND WITHOUT WARRANTY OF ANY KIND.
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS
+CONTRIBTUORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
