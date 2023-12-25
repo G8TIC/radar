@@ -169,8 +169,7 @@ however most have sensible defaults and are therefore not required in operation.
 
 ## Wire protocol
 
-A basic description of the wire protocol is provided in [a relative
-link](PROTOCOL.md)
+A basic description of the wire protocol is provided in [a relative link](PROTOCOL.md)
 
 
 ## Contributing
@@ -182,12 +181,11 @@ You are welcome to suggest improvements and raise issues or bugs through Github.
 
 ### Copyright
 
-Radar forwarder for 1090MHZ UK ("radae") is Copyright (C) 2023 by Michael J. Tubby B.Sc. MIET
-G8TIC. All Rights Reserved.
+This "Radar" forwarder software for the 1090MHZ UK ADS-B Network is Copyright (C) 2023 by Michael J. Tubby B.Sc. MIET G8TIC. All Rights Reserved.
 
 ### Acknowledgements
 
-Portions of this project (sha256, hmac-sha256) use open source code contributed by Apple Inc. and which are duly acknowleged.
+Portions of this project (sha256, hmac-sha256) use open source code contributed by Apple Inc. and are duly acknowleged.
 
 ### License
 
@@ -203,3 +201,4 @@ THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR I
 WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS
 CONTRIBTUORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+

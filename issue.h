@@ -8,12 +8,12 @@
 
 #ifndef GIT_VERSION
 #define GIT_VERSION "2.02-2"
-#define GIT_COUNT "6"
-#define GIT_ID "421f866"
+#define GIT_COUNT "7"
+#define GIT_ID "5ae863c"
 #endif
 
 #ifndef BUILD_HOST
 #define BUILD_HOST "orac"
-#define BUILD_USER "mike"
+#define BUILD_USER "root"
 #define BUILD_ARCH "x86_64"
 #endif

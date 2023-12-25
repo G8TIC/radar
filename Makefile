@@ -1,5 +1,5 @@
 #
-# Makefile - The makefile for the ADS-B Beast Radar Packet Forwarder
+# Makefile - ADS-B Beast Radar Forwarder for 1090MHz UK Aggregator
 # Author: Michael J. Tubby B.Sc. MIET  mike@tubby.org
 #
 BASENAME=radar
@@ -11,7 +11,7 @@ PID_FILE=${PID_DIR}${PID_NAME}
 INIT_NAME=${BASENAME}.init
 INIT_DIR=/etc/init.d
 UNIT_NAME=${BASENAME}.unit
-UNIT_DIR=/etc/systemd
+UNIT_DIR=/etc/systemd/system
 TARGET=./$(BIN)
 
 CFLAGS=-Wall -Werror -Wno-error=unused-but-set-variable -std=gnu11 -g -O -I../include -DBASENAME=\"${BASENAME}\" -DPID_FILE=\"${PID_FILE}\"
@@ -30,8 +30,8 @@ POSTCOMPILE = @mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d && touch $@
 #
 all : radar
 
-radar : CFLAGS += -DDEBUG
-radar : depend $(OBJ) issue.h defs.h
+#radar : CFLAGS += -DDEBUG
+radar : depend $(OBJ) defs.h
 	$(CC) $(CFLAGS) $(OBJ) -o $(BIN)
 	@echo "Run 'make install' to install $(BIN) as $(BIN_DIR)$(BIN)"
 
@@ -39,8 +39,6 @@ radar : depend $(OBJ) issue.h defs.h
 #
 # don't mess with this unless you know what it does!
 #
-issue.h:
-	./issue.pl
 
 distclean : 
 	@echo "distclean"
@@ -49,7 +47,7 @@ distclean :
 
 clean : 
 	@echo "clean"
-	rm -f *.[o] core $(BASENAME) $(TARGET) *\$$\$$\$$ *~ \#* *.old *.deb *.buildinfo *.changes radar-*.*.*.tar.gz
+	rm -f *.[o] core $(BASENAME) $(TARGET) *\$$\$$\$$ *~ \#* *.old
 	rm -rf radar-*.*.*
 
 prepare :
@@ -85,8 +83,10 @@ $(DEPDIR)/%.d: ;
 
 .dep depend : Makefile
 	touch .dep
-	@echo Executing issue.pl
-	./issue.pl
+
+commit:
+	git commit -a
+	git push --tags
 
 
 #include $(wildcard $(patsubst %,$(DEPDIR)/%.d,$(basename $(SRCS))))
