@@ -51,7 +51,7 @@ The MLAT is the 48-bit multi-lateration clock counter from readsb/dump1090.
 
 ### RSSI
 
-The RSSI is the Receiver Signal Strength Indication (RSSI) in dBFS.
+The Receiver Signal Strength Indication (RSSI) is the received signal stength in dBFS.
 
 ### ADS-B Data
 
