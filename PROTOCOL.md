@@ -63,16 +63,16 @@ There are some other mesasges that are sent:
 ### Keep-alive
 
 If your station receives no traffic for a second then we send a "hello" or
-keep-alive so that the aggregator knows you hav not gone away.
+keep-alive so that the aggregator knows you have not gone away.
 
 ### Radio Statistics
 
-The 1090MHz radio channel local to you may contain a huhe amount of traffic
-that is meaningless to us inlcuding kegcacy Mode-A, Mode-C and Mode-S
+The 1090MHz radio channel local to you may contain a huge amount of traffic
+that is meaningless to us including legcacy Mode-A, Mode-C and Mode-S
 (short) messages.
 
 We count the quantity of these messages to understand how busy the radio
-channel is in your locality and send traffic counts every 15 minutes.
+channel is in your locality and send rhese counts every 15 minutes.
 
 See stats.c/stats.h for more details.
 
