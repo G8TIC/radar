@@ -15,14 +15,6 @@
 
 extern int debug;
 
-#if 0
-static uint8_t testkey[AUTHTAG_KEY_LEN] = {
-                0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
-                0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
-                0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f,
-                0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f		};
-#endif
-
 static uint8_t key[AUTHTAG_KEY_LEN];
 
 
@@ -47,7 +39,6 @@ void authtag_sign(uint8_t *out, int outlen, void *in, int inlen)
         int mod = HMAC_SHA256_SIZE - outlen;
         int idx;
 
-        //hmac_sha256(hmac, in, inlen, testkey, AUTHTAG_KEY_LEN);
         hmac_sha256(hmac, in, inlen, key, AUTHTAG_KEY_LEN);
         idx = hmac[22] % mod;
         memcpy(out, &hmac[idx], outlen);
@@ -82,6 +73,13 @@ int authtag_check(uint8_t *tag, int taglen, uint8_t *in, int inlen)
 
 /*
  * authtag_init() - create two keys for HMAC from user provided inner PSK (ipsk) and outer PSK (opsk)
+ *
+ * This takes a variable length pass-phase/secret key as the input and generates a 512-bit (64 byte)
+ * SHA512 has as the output.
+ *
+ * The 512-bit output is effectively 'key expansion' from the input secret and results in 512-bits/
+ * 64-bytes of material that is optimal for HMAC-SHA256 as this needs two 32-byte keys.
+ * 
  */
 void authtag_init(char *secret)
 {
