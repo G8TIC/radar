@@ -1,6 +1,6 @@
 # Radar :: 1090MHz UK ADS-B forwarder
 
-This project is the "radar" forwarder for the 1090MHZ UK ADS-B aircraft tracking network.
+This project is the "radar" forwarder for the 1090MHz UK ADS-B aircraft tracking network.
 
 Radar allows a wide range of ADS-B receivers based on SDR dongles to receive 1090MHz ADS-B and
 forward interesting traffic to the 1090MHz UK aggregator using an optimised, efficient and secure
