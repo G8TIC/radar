@@ -9,9 +9,9 @@ real-time UDP/IP protocol.
 Radar is designed to sit along side other feeders for flight tracking networks such as
 FlightRadar24, FlightAware, OARC and Radar360 and has no known problems sharing resources with them.
 
-Our forwarging protocol has been optimsied to minimise traffic (only send relevant messages),
-be efficient, be very low latency for MLAT and real-time operation and to be secure
-and as a cosequnce we prefer it over protocols like BEAST.
+Our forwarging protocol has been carefullt designed and optimised to minimise traffic
+(only send relevant messages), be efficient, be very low latency for MLAT and real-time operation
+and to be secure and as a consequnce we prefer it over protocols like BEAST.
 
 If you're looking for a pre-built Docker container image then Ramon KX1T maintains this project as a
 docker image over on his site at: https://github.com/sdr-enthusiasts/docker-radar1090
