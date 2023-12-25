@@ -170,7 +170,7 @@ however most have sensible defaults and are therefore not required in operation.
 
 ## Wire protocol
 
-A basic description of the wire protocol is provided in [a relative link](PROTOCOL.md)
+A basic description of the wire protocol is provided in [PROTOCOL.md](PROTOCOL.md)
 
 
 ## Contributing
