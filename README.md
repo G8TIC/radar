@@ -1,6 +1,6 @@
 # Radar :: 1090MHz UK ADS-B forwarder
 
-This is the ADS-B "radar" forwarder for the 1090MHZ UK ADS-B aircraft tracking network.
+This project is the "radar" forwarder for the 1090MHZ UK ADS-B aircraft tracking network.
 
 Radar allows a wide range of ADS-B receivers based on SDR dongles to receive 1090MHz ADS-B and
 forward interesting traffic to the 1090MHz UK aggregator using an optimised, efficient and secure
@@ -8,6 +8,10 @@ real-time UDP/IP protocol.
 
 Radar is designed to sit along side other feeders for flight tracking networks such as
 FlightRadar24, FlightAware, OARC and Radar360 and has no known problems sharing resources with them.
+
+Our forwarging protocol has been optimsied to minimise traffic (only send relevant messages),
+be efficient, be very low latency for MLAT and real-time operation and to be secure
+and as a cosequnce we prefer it over protocols like BEAST.
 
 If you're looking for a pre-built Docker container image then Ramon KX1T maintains this project as a
 docker image over on his site at: https://github.com/sdr-enthusiasts/docker-radar1090
