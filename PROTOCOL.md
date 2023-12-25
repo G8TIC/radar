@@ -8,12 +8,7 @@ Radar V2 protocol uses UDP port number 5997.
 
 ## Message format
 
-Each ADS-B message send to the central aggregator comprises the following components in a 50-byte UDP/IP
-packet.
-
-Message formats are defined in radar.h
-
-The most frequently used message is the Mode-S(ES) update:
+Each ADS-B message sent to the central aggregator comprises the following components in a 50-byte UDP/IP packet.
 
 ```
 +-------------------------+-------------------------+-------------+--------+-------------------+------+-------------------------------------------+-------------------------+
@@ -61,3 +56,29 @@ ADS-B Data is the 112-bit/14-byte ADS-B DF17/DF18/DF19 Extended Squitter as spec
 
 The Authentication tag is a 64-bit truncacted HMAC-SHA256 of the message for integrity checking (little endian).
 
+## Other messges
+
+There are some other mesasges that are sent:
+
+### Keep-alive
+
+If your station receives no traffic for a second then we send a "hello" or
+keep-alive so that the aggregator knows you hav not gone away.
+
+### Radio Statistics
+
+The 1090MHz radio channel local to you may contain a huhe amount of traffic
+that is meaningless to us inlcuding kegcacy Mode-A, Mode-C and Mode-S
+(short) messages.
+
+We count the quantity of these messages to understand how busy the radio
+channel is in your locality and send traffic counts every 15 minutes.
+
+See stats.c/stats.h for more details.
+
+### System Telemetry
+
+We monitor the envionment and operation of the receiver platform periodically
+in order to detect bugs or operation that we need to fix.
+
+See telemetry.c/telemetry.h for more details.
