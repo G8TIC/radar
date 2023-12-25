@@ -64,7 +64,7 @@ cd radar
 make
 ```
 
-Intsall the code:
+Install the code:
 
 ```
 sudo make install
@@ -85,7 +85,7 @@ Each receiver station is identified by an API key or 'sharing key' which is a 64
 0x7B432017356401A3
 ````
 
-Along with the sharing key we need a station name (3-12 characters) and the GPS location of your receiver's
+Along with the sharing key we need a station name and the GPS location of your receiver's
 antenna in order to perform range checks and MLAT.
 
 ### Station name
@@ -101,7 +101,7 @@ or a nickname like ELMARKO or BIGCAT.
 ### Antenna location
 
 In order to perform range checks and MLAT calculations we need the location
-of your receiver antenna as GPS latitude and longitude to five decimal
+of your receiver antenna as GPS latitude and longitude to six decimal
 places.  We would also like our antenna height above ground in metres.
 
 
@@ -117,26 +117,27 @@ The UDP/IP forwarding protocol digitally signs each packet using a truncated
 HMAC-SHA256 which protects against message corruption, forgery and replay
 attacks.
 
-By default the messages are signed with the pass-phrase 'secret' - an
-additional configuration step is requred at both the sender and aggregator
-to set up a custom pass-phrase.
+If you haven't been given a pass-phrase when you run setup you can skip this
+and the system will use the default pass-phrase 'secret'.
 
+We might contact you to ask you to use a new pre-shared key (passphrase known
+to you and us only) to secure the feed in which case you'll need to run
+setup again or manually edit the configiration.
 
 
 ## Configuration
 
 ### Default configuration
 
-The radar forwarder stores its configuration in:
+The configuration for radar forwarder is stored in:
 
 ```
 	/etc/default/radar
 ```
 
-where the minimum is your sharing key provided by the `-k <sharing key>`
-option.
+where the minimum is your sharing key provided by the `-k <sharing key>` option.
 
-Other options are provided below.
+Other options are described below.
 
 
 ### Command line options
