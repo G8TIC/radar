@@ -85,7 +85,7 @@ Each receiver station is identified by an API key or 'sharing key' which is a 64
 0x7B432017356401A3
 ````
 
-Along with the sharing key we need a station name and the GPS location of your receiver's
+In addition to the sharing key we need a station name and the GPS location of your receiver's
 antenna in order to perform range checks and MLAT.
 
 ### Station name
