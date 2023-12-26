@@ -17,8 +17,8 @@ If you're looking for a pre-built Docker container image then Ramon KX1T maintai
 docker image over on his site at: https://github.com/sdr-enthusiasts/docker-radar1090
 
 If you want to send a feed to 1090MHz UK without using our dedicated feeder
-protocol then we also accept BEAST Reduce Plus from Ultrafeeder and similar,
-see: https://www.1090mhz.uk/sharing.html
+protocol then we also accept BEAST Reduce Plus from Ultrafeeder and similar
+systems, see: https://www.1090mhz.uk/sharing.html for info.
 
 
 ## Supported systems
@@ -115,18 +115,19 @@ You can get a sharing key from the 1090MHz website at https://1090mhz.uk or
 by emailing info@1090mhz.uk or by messaging me (Mike Tubby) on Discord.
 
 
-### Secure pass-phrases
+### Pass phrase
 
 The UDP/IP forwarding protocol digitally signs each packet using a truncated
-HMAC-SHA256 which protects against message corruption, forgery and replay
-attacks.
+HMAC-SHA256 which protects against message corruption in transit, forgery and
+replay attacks.
 
-If you haven't been given a pass-phrase when you run setup you can skip this
-and the system will use the default pass-phrase 'secret'.
+If you haven't been given a pass phrase when you run setup you can skip this
+and the system will use the default phrase 'secret'.
 
-We might contact you to ask you to use a new pre-shared key (passphrase known
-to you and us only) to secure the feed in which case you'll need to run
-setup again or manually edit the configiration.
+We might contact you to ask you to use a new pass phrase (known only to you and
+us) to secure the feed in which case you'll need to run setup again or manually
+edit the configuration file `/etc/default/radar` and edit the `-p` option to
+change the pass phrase.
 
 
 ## Configuration
@@ -186,7 +187,7 @@ You are welcome to suggest improvements and raise issues or bugs through Github.
 
 ### Copyright
 
-This "Radar" forwarder software for the 1090MHZ UK ADS-B Network is Copyright (C) 2023 by Michael J. Tubby B.Sc. MIET G8TIC. All Rights Reserved.
+This software ("Radar") is Copyright (C) 2023 by Michael J. Tubby B.Sc. MIET G8TIC. All Rights Reserved.
 
 ### Acknowledgements
 
@@ -194,8 +195,8 @@ Portions of this project (sha256, hmac-sha256) use open source code contributed 
 
 ### License
 
-This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as
+published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
 Refer to file LICENSE supplied with the source code.
 
@@ -206,4 +207,3 @@ THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR I
 WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS
 CONTRIBTUORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
