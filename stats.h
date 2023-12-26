@@ -1,9 +1,8 @@
 /*
  * stats.h -- stats for the ADS-B / radio
  *
- * WARNING/NOTE/CAUTION
- *
- * We cannot use time_t directly in messages due to architecture differences!
+ * Reminder: We cannot use time_t directly in messages as it varies in size
+ * on different architectures
  *
  */
 

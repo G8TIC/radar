@@ -179,10 +179,15 @@ however most have sensible defaults and are therefore not needed in operation.
 A description of the wire protocol is provided in [PROTOCOL.md](PROTOCOL.md)
 
 
-## Telemetry
+## Telemetry and Statistics
 
 In addition to the ADS-B data, we send some telemetry about the software and the platform that
-it is running on to understand performance and discover bugs. For details see [TELEMETRY.md](TELEMETRY.md)
+it is running on to understand performance and discover bugs.
+
+We also gather statistics about the radio channel and message types and rates
+of receiption to understand radio channel utiliation.
+
+For details see [TELEMETRY.md](TELEMETRY.md) and [STATS.md](STATS.md)
 
 
 ## Contributing
@@ -199,6 +204,8 @@ This software ("Radar") is Copyright (C) 2023 by Michael J. Tubby B.Sc. MIET G8T
 ### Acknowledgements
 
 Portions of this project (sha256, hmac-sha256) use open source code contributed by Apple Inc. and are duly acknowleged.
+
+Portions of this project (sha512) use open source code contributed by Aaron D. Gifford and Jelte Jansen and are duly acknowleged.
 
 ### License
 
