@@ -1,21 +1,24 @@
 # System telemetry
 
 In addition to the ADS-B traffic we also send some telemetry about the operation of the
-platform and performance of our software periodically.  We do this to understand how our
-software is performing in order to detect bugs or unwanted behavious that we need to fix.
+platform and performance of our software periodically.
+
+We do this to understand how our software is performing in order to detect bugs or unwanted
+behaviour that we need to fix.
 
 
 ## What we send
 
 We send the following information:
 
-### Start time and current time
+### Time stamps
 
-So we can work out how long the feeder has been running.
+Start time and current time so we can work out how long the feeder has been running.
 
 ### UTS name strings
 
-The Posix UTS name strings as returned by teh `uname` command.
+The Posix UTS name strings as returned by the `uname` command - this
+includes the Linux kernel version info, machine architecture, etc.
 
 ### Processor details
 
@@ -32,7 +35,7 @@ The GCC compiler version information that built the feeder code.
 
 ### GLIBC version
 
-The version number of the Glibc library.
+The version number of the Glibc library that radar is running with.
 
 ### Data sizes
 
@@ -45,8 +48,8 @@ Version number of the radar software.
 
 ### Performance metrics
 
-Client protocol, number of times connected/disconnected/failed from the
-BEAST or AVR feed (dump1090 or readsb).
+Client protocol (BEAST or AVR), number of times we have connected, disconnected or
+had a connection failed or socket fail from the dump1090 or readsb.
 
 Counts of bytes read, good and bad frames and packets per second.
 

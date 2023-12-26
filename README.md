@@ -185,7 +185,7 @@ In addition to the ADS-B data, we send some telemetry about the software and the
 it is running on to understand performance and discover bugs.
 
 We also gather statistics about the radio channel and message types and rates
-of receiption to understand radio channel utiliation.
+of receiption to understand radio channel utilisation.
 
 For details see [TELEMETRY.md](TELEMETRY.md) and [STATS.md](STATS.md)
 
