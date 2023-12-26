@@ -140,23 +140,24 @@ The configuration for radar forwarder is stored in:
 	/etc/default/radar
 ```
 
-where the minimum is your sharing key provided by the `-k <sharing key>` option.
+where the minimum is your sharing key provided by the `-k <key>` option.
 
 Other options are described below.
 
 
 ### Command line options
 
-The radar code has several command line options:
+The radar code has several command line options that can be used in the
+OPTIONS= line of the config file - here is the full list:
 
 ```
   -k <key>           : sharing key (identity) of this receiver station
-  -h <hostname>      : hostname of central aggregator
+  -h <hostname>      : hostname of central aggregator (default: adsb-in.1090mhz.uk)
   -p <psk>           : pre-shared key for HMAC authwentication (signing of messages)
   -c                 : enable sending Mode-A/C message (not recommended)
   -y                 : enable sending Mode-S Short messages (not recommended)
   -e <level>         : control which Mode-S Extended Squitter DF codes are sent (default = 1)
-  -l <ip addr>       : IP address of local dump1090/readsb server (default: 127.0.0.1)
+  -r <ip addr>       : IP address of dump1090/readsb server (default: 127.0.0.1)
   -s <seconds>       : Set the radio stats interval (default 900)
   -t <seconds>       : Set the telemetry interval (default 900)
   -d                 : run as daemon (detach from controlling tty)
@@ -170,12 +171,18 @@ The radar code has several command line options:
   -?                 : help (this output)
 ```
 
-however most have sensible defaults and are therefore not required in operation.
+however most have sensible defaults and are therefore not needed in operation.
 
 
 ## Wire protocol
 
-A basic description of the wire protocol is provided in [PROTOCOL.md](PROTOCOL.md)
+A description of the wire protocol is provided in [PROTOCOL.md](PROTOCOL.md)
+
+
+## Telemetry
+
+In addition to the ADS-B data, we send some telemetry about the software and the platform that
+it is running on to understand performance and discover bugs. For details see [TELEMETRY.md](TELEMETRY.md)
 
 
 ## Contributing
