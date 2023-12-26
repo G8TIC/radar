@@ -7,7 +7,7 @@ The system sends only information received off-air from publically available sou
 statistics about the radio channel/packet counts and some telemetry about the device
 it is running on.
 
-Telemetry is desctibed in [TELEMETRY.md](TELEMETRY.md) and statistics are
+Telemetry is described in [TELEMETRY.md](TELEMETRY.md) and statistics are
 described in [STATS.md](STATS.md)
 
 
