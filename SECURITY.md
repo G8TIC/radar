@@ -41,11 +41,14 @@ MLAT but we don't display this to anyone
 c) your contact details (name and email address) which are only accessible to the
 system operators and only used in the event of a problem
 
-## Your UK/EU privacy rights
-No personal information is transferred outside the UK or Europe.
+## UK/EU privacy rights
+No personal information is transferred anywhere as we do not use any form of
+PII and hence no personal information is outside the UK or Europe.
 
-You are free to delete this sofwtare and your station and details at any time
-This system complies with UK and EU privacy regulations such as the GDPR
+You are free to delete this sofwtare and your station and details at any
+time.
+
+This system complies with UK and EU privacy regulations such as the GDPR.
 
 ## Transmit only
 By using UDP/IP "transmit only" and having no packet receive processing the
