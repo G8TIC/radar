@@ -46,7 +46,7 @@ Radar works on reasonably modern Linux operating systems that are Debian 10.x ba
 Debian, Raspbian, Raspberry Pi OS, Ubuntu and Devuan -- it will probably work many others as it has minimal
 requirements other than GCC compiler and make.
 
-If you have a problem running radar on anotehr platform please [raise an issue](https://github.com/G8TIC/radar/issues)
+If you have a problem running radar on another platform please [raise an issue](https://github.com/G8TIC/radar/issues)
 
 
 ### Init systems
