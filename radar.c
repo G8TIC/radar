@@ -5,19 +5,24 @@
  *
  * ABSTRACT
  *
- * This feeder software ('radar') runs as a daemon and connects to the ADS-B
- * service of your device running dump1090/dump1090-mutability/dump1090-fa/readsb
- * using the BEAST binary protocol (preferred) or AVR ASCII protocol (fallback)
+ * This 'radar' feeder software runs as a daemon on your local system and and
+ * connects to the ADS-B service on your device running dump1090/readsb using
+ * the BEAST binary protocol (preferred) or AVR ASCII protocol (fallback mode)
  * and extracts messages of interest (mainly Extended Squitter messages), converts
  * them to UDP/IP and forwards them to the 1090MHz UK network aggregator.
  *
- * The code implements local deduplication over a 3 second time-span to remove
- * duplicate/un-necessary messages and reduce network bandwidth by approximately 
- * 30-35% compared with sending all messages.
+ * The code implements local deduplication over a 3 second window to remove
+ * duplicate/un-necessary messages and reduce transmissions by approximately
+ * 30-35% compared with blindly sending all messages.  This saves both network
+ * bandwidth and processing load on the aggregator.
  *
  * By default we send only Extended Equitter DF17, DF18 and DF19 but can enable
- * Mode-A/C message and short squitter messages. We can also enbable DF20/DF12
- * intergator/Comm-B responses as/when/if we need them.
+ * can enbable DF20/DF21 intergator/Comm-B responses, DF16 altitude and DF22
+ * Military use as/when/if we need them.
+ *
+ * For more details on ADS-B and DF types see:
+ *
+ *	https://mode-s.org/decode/book-the_1090mhz_riddle-junzi_sun.pdf
  *
  *
  * ENCRYPTION AND AUTHENTICATION
@@ -26,9 +31,26 @@
  * there's little point encrypting them on the wire, however for system security
  * it is a good idea to authenticate messages.
  *
- * Each message is digitally signed using a truncated HMAC-SHA256 which provides
- * message integrity and message authentication so we can trust the content and
+ * Each message is digitally signed using a 64-bit truncated HMAC-SHA256 which
+ * provides message integrity and authentication so we can trust the content and
  * trust the sender.
+ *
+ *
+ * TELEMETRY
+ *
+ * This software gathers a small amount of telemetry about the system that it is
+ * running on in order for us to understand performance issues and track down bugs.
+ *
+ * No personal information is gathered.  See TELEMTERY.md for more details.
+ *
+ *
+ * STATISTICS
+ *
+ * This software gathers information about the qualitities of all types of ADS-B
+ * message seen on the channel by your receiver along with message rates in order
+ * for us to characterise the radio channel and understand the data being received.
+ *
+ * See STATS.md for more details.
  *
  *
  * WEBSITE
@@ -69,14 +91,15 @@
  *
  * The daemon can be used from the command line as follows:
  *
- *	radar -k <key> -h <host> (-p <psk>) (-d)
+ *	radar -k <key> -p <pass-phrase> (-d)
  *
  * where:
  *
  *	-k <key>	  sharing key for your station
- *	-h <hostname>	  destination hostname for aggregator, e.g. adsb-in.1090mhz.uk
+ *	-h <hostname>	  destination hostname for aggregator, defaults to adsb-in.1090mhz.uk
  *      -p <pass-phrase>  pre-shared key for message authentication, defaults to "secret"
- *	-l <ipaddr>	  address of device that provides ADS-B source if not localhost
+ *	-r <ipaddr>	  address of device that provides ADS-B source if not localhost
+ *	-e <level>        set the level of Extended Squitter sent
  *	-u <user>	  user name to run under, e.g. 'nobody'
  *	-g <group>	  group name to run under, e.g. 'nogroup'
  *	-q <qos>	  IP Quality of Service using DiffServe values 0-63
@@ -104,7 +127,7 @@
  * spoofed either.
  *
  * The system defaults to using the pass-phrase "secret" - please contact us to set a better
- * one - we usually obtain pass phrases from random.org
+ * one - we usually generate pass phrases at random.org
  *
  */
 
