@@ -90,14 +90,15 @@ static int find_thermal_zone(void)
                 fin = fopen(path, "r");
                 
                 if (fin) {
-                        fread(buf, sizeof(buf), 1, fin);
+                        if (fread(buf, sizeof(buf), 1, fin)) {
 
-                        /* use string comparison with size to ignore the newline on the end of the name returned by fread() */                
-                        if (strncmp(buf, ARM_THERMAL_NAME, strlen(ARM_THERMAL_NAME)) == 0 || strncmp(buf, X86_THERMAL_NAME, strlen(X86_THERMAL_NAME)) == 0) {
-                                fclose(fin);
-                                return i;                
+                                /* use string comparison with size to ignore the newline on the end of the name returned by fread() */                
+                                if (strncmp(buf, ARM_THERMAL_NAME, strlen(ARM_THERMAL_NAME)) == 0 || strncmp(buf, X86_THERMAL_NAME, strlen(X86_THERMAL_NAME)) == 0) {
+                                        fclose(fin);
+                                        return i;                
+                                }
                         }
-                        
+                                        
                         fclose(fin);
                 }
         }
