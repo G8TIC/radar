@@ -90,13 +90,15 @@ static int find_thermal_zone(void)
                 fin = fopen(path, "r");
                 
                 if (fin) {
-                        if (fread(buf, sizeof(buf), 1, fin)) {
-
-                                /* use string comparison with size to ignore the newline on the end of the name returned by fread() */                
-                                if (strncmp(buf, ARM_THERMAL_NAME, strlen(ARM_THERMAL_NAME)) == 0 || strncmp(buf, X86_THERMAL_NAME, strlen(X86_THERMAL_NAME)) == 0) {
-                                        fclose(fin);
-                                        return i;                
-                                }
+                        int rc;
+                        
+                        rc = fread(buf, sizeof(buf), 1, fin);
+                        rc = rc;					/* hack since fread on sysfs returns zero */
+                        
+                        /* use string comparison with size to ignore the newline on the end of the name returned by fread() */                
+                        if (strncmp(buf, ARM_THERMAL_NAME, strlen(ARM_THERMAL_NAME)) == 0 || strncmp(buf, X86_THERMAL_NAME, strlen(X86_THERMAL_NAME)) == 0) {
+                                fclose(fin);
+                                return i;                
                         }
                                         
                         fclose(fin);
@@ -198,7 +200,7 @@ void telemetry_init(int ival)
                 /* initialise telemetry by getting constants */
                 struct utsname uts;
                 int rc;
-       
+
                 memset(&telemetry, 0, sizeof(telemetry_t));
 
                 setup_temp_zone();
