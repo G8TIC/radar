@@ -11,10 +11,10 @@
  * and extracts messages of interest (mainly Extended Squitter messages), converts
  * them to UDP/IP and forwards them to the 1090MHz UK network aggregator.
  *
- * The code implements local deduplication over a 3 second window to remove
+ * The code implements local de-duplication over a 3 second window to remove
  * duplicate/un-necessary messages and reduce transmissions by approximately
  * 30-35% compared with blindly sending all messages.  This saves both network
- * bandwidth and processing load on the aggregator.
+ * bandwidth and processing load at the aggregator.
  *
  * By default we send only Extended Equitter DF17, DF18 and DF19 but can enable
  * can enbable DF20/DF21 intergator/Comm-B responses, DF16 altitude and DF22
@@ -27,13 +27,22 @@
  *
  * ENCRYPTION AND AUTHENTICATION
  *
- * Radar messages are broadcast un-encrypted on the air (by aircraft) and hence
- * there's little point encrypting them on the wire, however for system security
- * it is a good idea to authenticate messages.
+ * Radar messages are broadcast un-encrypted by aircraft and hence there seems to
+ * be little point encrypting the mesasges on the wire, however for system security
+ * we want to check the integrity of messages and authenticate the sender is genuine.
  *
- * Each message is digitally signed using a 64-bit truncated HMAC-SHA256 which
- * provides message integrity and authentication so we can trust the content and
- * trust the sender.
+ * We prove the integrity and authenticity of each message using a 64-bit digital
+ * signature called an "authentication tag" - this is a truncated HMAC-SHA256
+ * digest of the message or "signature".
+ *
+ * Providing the originator and recipient use a unique and private pass-phrase then
+ * then the signature provides message integrity and authentication so we can trust
+ * both the content and the sender.
+ *
+ * The digital signature should protect data in transit against message corruption,
+ * tampering, forgery, spoofing and replay attack. 
+ *
+ * Refer to authtag.c for more details.
  *
  *
  * TELEMETRY
@@ -46,8 +55,8 @@
  *
  * STATISTICS
  *
- * This software gathers information about the qualitities of all types of ADS-B
- * message seen on the channel by your receiver along with message rates in order
+ * This software gathers information about amount of ADS-B traffic and messages
+ * seen on the radio channel by your receiver along with message rates in order
  * for us to characterise the radio channel and understand the data being received.
  *
  * See STATS.md for more details.
@@ -121,7 +130,7 @@
  *
  * PASS-PHRASE/SECRET
  *
- * Radar V2 now uses a 64-bit Authentication Tag on each message to ensure that it has not
+ * Radar V2 uses a 64-bit Authentication Tag on each message to ensure that it has not
  * been altered in transit. If both parties set a pre-shared key/pass-phrase then the
  * aggregator can authenticate the originator and we know the message cannot have been
  * spoofed either.
@@ -175,7 +184,7 @@ int dologfile = 0;
 int dostats = 0;
 int debug = 0;
 int gotkey = 0;
-int send_es = 1;
+int send_es = 2;						/* Send DF17, 18, 19, 20 and 21 by default */
 int send_ss = 0;
 int send_ac = 0;
 int stats_interval = STATS_INTERVAL;
@@ -412,7 +421,7 @@ static void send_mode_es(radar_mode_es_t *bp)
 
 #if 0
                 /*
-                 * interference monkey - breake random bits on random occasions to check auth tag works ...
+                 * interference monkey - brake random bits on random occasions to check auth tag works ...
                  */
                 int r = rand() % 10;
                 
@@ -467,10 +476,6 @@ void radar_send_keepalive(void)
         ++stats.tx_stats;
         ++stats.tx_count;
         stats.tx_bytes += sizeof(radar_keepalive_t);
-                
-        /* local stats */
-        ++send_count;
-        byte_count += sizeof(radar_keepalive_t);
 }
 
 
@@ -993,8 +998,10 @@ int main(int argc, char *argv[])
                                 /* foreground stats */
                                 if (dostats) {
                                         printf("Packets forwarded: %3u   Not forwarded (dupes): %3u  Bytes per second: %5u\n", send_count, dupe_ss_count+dupe_es_count, byte_count);
-                                        send_count = dupe_ss_count = dupe_es_count = byte_count = 0;
                                 }
+
+                                /* clear the per-second stats */                                
+                                send_count = dupe_ss_count = dupe_es_count = byte_count = 0;
                                 
                                 /* do radio stats and device telemetry */
                                 stats_second();
