@@ -69,11 +69,11 @@ echo "depending on how it was installed... we'll try and figure this out automat
 echo ""
 
 if [[ $BEAST == "30005" ]]; then
-	echo "Your system supports BEAST binary protocol... let's use that - we can do MLAT ;-)"
+	echo "Your system supports BEAST binary protocol... which is great ;-)"
 elif [[ $AVR == "30002" ]]; then
-	echo "Your system supports AVR ASCII protocol... let's use that but we won't have MLAT :-("
+	echo "Your system supports AVR ASCII protocol... which we'll use as a fallback to BEAST"
 else
-	echo "Cannot find BEAST or AVR protocol on this system - is dump1090 or readsd running?"
+	echo "Cannot find BEAST or AVR protocol on this system - is dump1090 or readsb running?"
 	echo ""
 	echo "If you normally run dump1090/readsb on this machine say no here, re-start"
 	echo "dump1090/readsb and run setup again."
@@ -124,7 +124,7 @@ done
 
 echo ""
 echo ""
-echo "Step 3: Digital signing key (optional)"
+echo "Step 3: Signing pass-phrase (optional)"
 echo "--------------------------------------"
 echo ""
 echo "Radar v2 protocol uses digital signatures on messages to the central aggregator"
@@ -165,6 +165,13 @@ OPTIONS="-k $KEY"
 OPTIONS="${OPTIONS} -p ${PASSPHRASE}"
 
 #
+# if we don't find BEAST protocol on port 30005 assume the system is AVR and add switch
+#
+if [[ $BEAST != "30005" ]]; then
+	OPTIONS="${OPTIONS} -a"
+fi
+
+#
 # add remote ADS-B host if specified
 #
 if [ -z ${REMOTE+x} ]; then
@@ -190,7 +197,10 @@ if [[ $INIT == "systemd" ]]; then
 	cp radar.default $DEFAULT
 
 	echo "OPTIONS=\"${OPTIONS}\"" >> $DEFAULT
-	
+
+        echo "Stop previous instance of radar forwarder..."
+        systemctl stop radar
+        echo "Copy systemd unit file ..."
 	cp radar.unit /etc/systemd/system/radar.service
 	echo "Enabling radar service on boot ..."
 	systemctl enable radar

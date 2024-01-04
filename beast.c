@@ -201,6 +201,7 @@ static int connect_socket(void)
                         ++telemetry.connect_success;
                         return 1;
                 } else {
+                        ++telemetry.connect_fail;
                         return 0;
                 }
         }
@@ -212,10 +213,8 @@ static int connect_socket(void)
 /*
  * beast_init() - initialise the BEAST
  */
-int beast_init(char *addr)
+void beast_init(char *addr)
 {
-        int rc;
-
         memset(&stats, 0, sizeof(stats_t));
         chgconstate(0);
         chgstate(0);
@@ -223,15 +222,7 @@ int beast_init(char *addr)
 
         strncpy(hostname, addr, HOSTNAME_LEN);
         
-        rc = connect_socket();
-        
-        if (rc) {
-                /* connection success */
-                chgconstate(BEAST_STATE_CONNECTED);
-                return 1;
-        } else {
-                return 0;
-        }        
+        chgconstate(BEAST_STATE_DISCONNECTED);
 }
 
 
@@ -269,15 +260,11 @@ void beast_run(void)
                                 /* connection success */
                                 chgconstate(BEAST_STATE_CONNECTED);
                                 xtimer_stop(&beast_retry);
-                                ++telemetry.connect_success;
                         } else {
                                 /* connect failed */
-                                //printf("beast_run(): Connect failed: %s (%d)\n", strerror(errno), errno);
-
                                 close(fd);
                                 xtimer_start(&beast_retry, BEAST_RETRY);
                                 chgconstate(BEAST_STATE_RETRY_WAIT);
-                                ++telemetry.connect_fail;
                         }
                         break;
                         
@@ -287,20 +274,19 @@ void beast_run(void)
                                 FD_SET(fd, &set);
 
                                 timeout.tv_sec = 0;
-                                timeout.tv_usec = 10000;		/* 10mS */
+                                timeout.tv_usec = BEAST_SELECT_TIMEOUT;
                                 
                                 rc = select(fd+1, &set, NULL, NULL, &timeout);
 
                                 if (rc < 0) {
-                                        /* error */
-                                        //perror("select");
+                                        /* error on connection */
                                         close(fd);
                                         xtimer_start(&beast_retry, BEAST_RETRY);
                                         chgconstate(BEAST_STATE_RETRY_WAIT);
                         	        ++telemetry.socket_error;
                                         
                                 } else if (rc == 0) {
-                                        /* timeout */
+                                        /* timeout no data*/
                                         ; 
                                 } else {
                                         /* data available or connection closed - do a read */
@@ -311,7 +297,7 @@ void beast_run(void)
                                                 process_input(buf, size);
                                                 
                                         } else {
-                                                /* size is zero -> connection shutdown */
+                                                /* size is zero -> connection closed */
                                                 close(fd);
                                                 xtimer_start(&beast_retry, BEAST_RETRY);
                                                 chgconstate(BEAST_STATE_RETRY_WAIT);

@@ -107,6 +107,7 @@
  *	-k <key>	  sharing key for your station
  *	-h <hostname>	  destination hostname for aggregator, defaults to adsb-in.1090mhz.uk
  *      -p <pass-phrase>  pre-shared key for message authentication, defaults to "secret"
+ *	-a                force use of legacy AVR protocol otherwise we use BEAST
  *	-r <ipaddr>	  address of device that provides ADS-B source if not localhost
  *	-e <level>        set the level of Extended Squitter sent
  *	-u <user>	  user name to run under, e.g. 'nobody'
@@ -127,13 +128,19 @@
  * As an absolute minimum you need an API/Skaring Key - these are 64-bit random numbers
  * that identify your radar station to us but mean nothing to anyone else.
  *
+ * Sharing keys are represented as 16 hex nibbles in uppercase with the leacing 0x - for
+ * example:
+ *
+ *                        0x79441BC23EDA3F17
+ *
  *
  * PASS-PHRASE/SECRET
  *
- * Radar V2 uses a 64-bit Authentication Tag on each message to ensure that it has not
- * been altered in transit. If both parties set a pre-shared key/pass-phrase then the
- * aggregator can authenticate the originator and we know the message cannot have been
- * spoofed either.
+ * Radar V2 uses a 64-bit Authentication Tag on each message to protect data in transit
+ * from corruption, forgery and replay attacks.
+ *
+ * If both parties set a pre-shared key/pass-phrase then the aggregator can authenticate
+ * the originator and we know the message cannot have been* spoofed either.
  *
  * The system defaults to using the pass-phrase "secret" - please contact us to set a better
  * one - we usually generate pass phrases at random.org
@@ -178,7 +185,7 @@
  */
 int ending = 0;
 int isdaemon = 0;
-int protocol = RADAR_PROTOCOL_NONE;
+int protocol = RADAR_PROTOCOL_BEAST;
 int dosyslog = 0;
 int dologfile = 0;
 int dostats = 0;
@@ -325,7 +332,7 @@ void radar_send(uint8_t opcode, uint8_t *data, int len)
 
 
 /*
- * udp_send() - ransmit a UDP/IP message to the aggregator
+ * udp_send() - send a UDP/IP message to the aggregator
  */
 static void udp_send(void *buf, int size)
 {
@@ -662,8 +669,15 @@ int main(int argc, char *argv[])
         /*
          * parse command line args
          */
-        while ((rc = getopt(argc, argv, "k:l:r:h:p:u:g:s:t:q:n:s:e:fvdcyxh?")) >= 0) {
+        while ((rc = getopt(argc, argv, "k:l:r:h:p:u:g:s:t:q:n:s:e:abfvdcyxh?")) >= 0) {
                 switch (rc) {
+
+                case 'a':
+                        protocol = RADAR_PROTOCOL_AVR;
+                        break;
+
+                case 'b':					/* ignore old BEAST switch - this is now assumed */
+                        break;
 
                 case 'k':
                         if (strlen(optarg) > APIKEY_LEN) {
@@ -758,6 +772,7 @@ int main(int argc, char *argv[])
                         printf("  -k <key>           : sharing key (identity) of this receiver station\n");
                         printf("  -h <hostname>      : hostname of central aggregator\n");
                         printf("  -p <psk>           : pre-shared key for HMAC authwentication (signing of messages)\n");
+                        printf("  -a                 : force use of AVR protocol rather than BEAST\n");
                         printf("  -c                 : enable sending Mode-A/C message (not recommended)\n");
                         printf("  -y                 : enable sending Mode-S Short messages (not recommended)\n");
                         printf("  -e <level>         : control which Mode-S Extended Squitter DF codes are sent (default = 1)\n");
@@ -947,19 +962,16 @@ int main(int argc, char *argv[])
         }
 
         /*
-         * auto configure ADS-B protocol by trying BEAST, falling bacl to AVR or failing
+         * initialise the ADS-B protocol (BEAST or AVR)
          */
-        if (beast_init(localaddress)) {
-                protocol = RADAR_PROTOCOL_BEAST;
+        if (protocol == RADAR_PROTOCOL_BEAST) {
+                beast_init(localaddress);
                 if (dostats)
                         printf("Using BEAST protocol on %s:%d (preferred)\n", localaddress, BEAST_PORT);
-        } else if (avr_init(localaddress)) {
-                protocol = RADAR_PROTOCOL_AVR;
+        } else {
+                avr_init(localaddress);
                 if (dostats)
                         printf("Using AVR protocol on %s:%d (fallback)\n", localaddress, AVR_PORT);
-        } else {
-                /* both inits failed */
-                 qerror("radar: cannot initialise BEAST or AVR protocol connection to %s\n", localaddress);
         }
 
         /*
@@ -971,7 +983,6 @@ int main(int argc, char *argv[])
          * forward traffic ...
          */
         do {
-
                 if (protocol == RADAR_PROTOCOL_BEAST)
                         beast_run();
                 else

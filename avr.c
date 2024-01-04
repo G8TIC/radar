@@ -58,7 +58,7 @@ static uint16_t pps;
 /*
  * chgconstate() - change connection state with debugging
  */
-static void chgconstate(int newstate)
+static void chgconstate(enum avrstate newstate)
 {
         if (debug)
                 printf("chgconstate(): %d -> %d\n", constate, newstate);
@@ -185,6 +185,7 @@ static int connect_socket(void)
                         ++telemetry.connect_success;
                         return 1;
                 } else {
+                        ++telemetry.connect_fail;
                         return 0;
                 }
         }
@@ -196,10 +197,8 @@ static int connect_socket(void)
 /*
  * avr_init() - initialise the AVR connection
  */
-int avr_init(char *addr)
+void avr_init(char *addr)
 {
-        int rc;
-
         memset(mlat, 0, MLAT_LEN);			/* no MLAT from AVR */
         rssi = 0xFF;					/* no RSSI from AVR */
 
@@ -210,15 +209,7 @@ int avr_init(char *addr)
 
         strncpy(hostname, addr, HOSTNAME_LEN);
         
-        rc = connect_socket();
-        
-        if (rc) {
-                /* connection success */
-                chgconstate(AVR_STATE_CONNECTED);
-                return 1;
-        } else {
-                return 0;
-        }        
+        chgconstate(AVR_STATE_DISCONNECTED);
 }
 
 
@@ -256,13 +247,11 @@ void avr_run(void)
                                 /* connection success */
                                 chgconstate(AVR_STATE_CONNECTED);
                                 xtimer_stop(&avr_retry);
-                                ++telemetry.connect_success;
                         } else {
                                 /* connect failed */
                                 close(fd);
                                 xtimer_start(&avr_retry, AVR_RETRY);
                                 chgconstate(AVR_STATE_RETRY_WAIT);
-                                ++telemetry.connect_fail;
                         }
                         break;
                         
@@ -272,20 +261,19 @@ void avr_run(void)
                                 FD_SET(fd, &set);
 
                                 timeout.tv_sec = 0;
-                                timeout.tv_usec = 10000;		/* 10mS */
+                                timeout.tv_usec = AVR_SELECT_TIMEOUT;
                                 
                                 rc = select(fd+1, &set, NULL, NULL, &timeout);
 
                                 if (rc < 0) {
-                                        /* error */
-                                        //perror("select");
+                                        /* select() error */
                                         close(fd);
                                         xtimer_start(&avr_retry, AVR_RETRY);
                                         chgconstate(AVR_STATE_RETRY_WAIT);
                         	        ++telemetry.socket_error;
                                         
                                 } else if (rc == 0) {
-                                        /* timeout */
+                                        /* timeout no data */
                                         ; 
                                 } else {
                                         /* data available or connection closed - do a read */
@@ -296,7 +284,7 @@ void avr_run(void)
                                                 process_input(buf, size);
                                                 
                                         } else {
-                                                /* size is zero -> connection shutdown */
+                                                /* size is zero -> connection closed */
                                                 close(fd);
                                                 xtimer_start(&avr_retry, AVR_RETRY);
                                                 chgconstate(AVR_STATE_RETRY_WAIT);

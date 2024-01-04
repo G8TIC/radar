@@ -1,5 +1,19 @@
 /*
  * authtag.h -- Authentication tag signing of Radar messages
+ * Author: Michael J. Tubby B.Sc. MIET G8TIC    mike@tubby.org
+ *
+ * Radar V2 uses a 64-bit Authentication Tag on each message to protect data
+ * in transit from corruption, forgery and replay attacks.
+ *
+ * The Authentication Tag is a truncated HMAC-SHA256 of the message using a
+ * pre-shared key known only to the originator and recipient.  The pre-shared
+ * key is in the form of a pass-phrase that is expanded to a 512-bit data block
+ * using SHA512 (key expansion).
+ *
+ * If both parties set a pre-shared key/pass-phrase then the aggregator can
+ * authenticate messages and be sure that they have not be damaged in transit,
+ * have not been spoofed and come from the originator.
+ *
  */
 
 #include <stdio.h>
@@ -23,8 +37,6 @@ static uint8_t key[AUTHTAG_KEY_LEN];
  * return a portion of size 'outlen' to the user's buffer as an authentication tag.
  *
  * HMAC-SHA256 is FIPS-198 and FIPS-140-2 compliant in this use case.
- *
- * It would be nice to use Blake-3 for increased speed.
  *
  * There's a bit of security by obsecurity in here as we select a portion of the HMAC
  * (of size outlen) from the overall HMAC by obtaining an offset dependant on the value

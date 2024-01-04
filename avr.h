@@ -9,21 +9,27 @@
 
 #include "defs.h"
 
-#define AVR_PORT		30002			/* BEAST protocol port */
-#define AVR_RETRY		3000L			/* retry interval for beast connection 3 seconds */
+#define AVR_PORT			30002			/* AVR protocol port */
+#define AVR_RETRY			3000L			/* connection retry interval - 3 seconds */
+#define AVR_SELECT_TIMEOUT		10000L
 
-#define AVR_STATE_DISCONNECTED	0			/* connection states */
-#define AVR_STATE_CONNECTED	1
-#define AVR_STATE_RETRY_WAIT	2
+#define AVR_MAX_DATA			MODE_ES_LEN
+#define AVR_MAX_FRAME			(AVR_MAX_DATA * 2)	/* maximum size of an AVR data frame 28 niddbles -> 14 bytes*/
+#define AVR_MAX_READ			1024			/* maximum TCP read size */
 
-#define AVR_MAX_DATA		MODE_ES_LEN
-#define AVR_MAX_FRAME		(AVR_MAX_DATA * 2)	/* maximum size of an AVR data frame 28 niddbles -> 14 bytes*/
-#define AVR_MAX_READ		1024			/* maximum TCP read size */
+/*
+ * enumerated list of connection states
+ */
+enum avrstate {
+        AVR_STATE_DISCONNECTED,			/* idle state */
+        AVR_STATE_CONNECTED,				/* connected and receiving data */
+        AVR_STATE_RETRY_WAIT				/* waiting to reconnect */
+};
 
 /*
  * exported functions
  */
-int avr_init(char *);
+void avr_init(char *);
 void avr_close(void);
 void avr_run(void);
 void avr_second(void);
