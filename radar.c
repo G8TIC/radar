@@ -459,7 +459,7 @@ static void send_mode_es(radar_mode_es_t *bp)
 
 
 /*
- * radar_send_keepalive() - send a keepalive (padding) message when there's been
+ * radar_send_keepalive() - send a keepalive message when there's been
  * no other traffic in the last second
  */
 void radar_send_keepalive(void)
@@ -771,7 +771,7 @@ int main(int argc, char *argv[])
                         printf("usage: radar [options]\n\n");
                         printf("  -k <key>           : sharing key (identity) of this receiver station\n");
                         printf("  -h <hostname>      : hostname of central aggregator\n");
-                        printf("  -p <psk>           : pre-shared key for HMAC authwentication (signing of messages)\n");
+                        printf("  -p <psk>           : pre-shared key for HMAC authentication (signing of messages)\n");
                         printf("  -a                 : force use of AVR protocol rather than BEAST\n");
                         printf("  -c                 : enable sending Mode-A/C message (not recommended)\n");
                         printf("  -y                 : enable sending Mode-S Short messages (not recommended)\n");

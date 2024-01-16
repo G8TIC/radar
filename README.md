@@ -11,7 +11,7 @@ FlightRadar24, FlightAware, OARC and Radar360 and has no known problems sharing 
 
 Our forwarding protocol has been carefully designed and optimised to minimise traffic
 (only send relevant messages), be efficient, be very low latency for MLAT and real-time
-operation, and to be secure and as a consequnce we prefer it over protocols like BEAST.
+operation, and to be secure and as a consequence  we prefer it over protocols like BEAST.
 
 If you're looking for a pre-built Docker container image then Ramon KX1T maintains this project as a
 docker image over on his site at: https://github.com/sdr-enthusiasts/docker-radar1090
@@ -109,7 +109,7 @@ or a nickname like ELMARKO or BIGCAT.
 
 In order to perform range checks and MLAT calculations we need the location
 of your receiver antenna as GPS latitude and longitude to six decimal
-places.  We would also like our antenna height above ground in metres.
+places.  We would also like your antenna height above ground in metres.
 
 
 ### Obtain a Sharing Key
@@ -125,9 +125,9 @@ HMAC-SHA256 which protects against message corruption in transit, forgery and
 replay attacks.
 
 If you haven't been given a pass phrase when you run setup you can skip this
-and the system will use the default phrase 'secret'.
+and the system will use the default pass-phrase of 'secret'.
 
-We might contact you to ask you to use a new pass phrase (known only to you and
+We might contact you to ask you to use a new pass-phrase (known only to you and
 us) to secure the feed in which case you'll need to run setup again or manually
 edit the configuration file `/etc/default/radar` and edit the `-p` option to
 change the pass phrase.
@@ -156,7 +156,7 @@ OPTIONS= line of the config file - here is the full list:
 ```
   -k <key>           : sharing key (identity) of this receiver station
   -h <hostname>      : hostname of central aggregator (default: adsb-in.1090mhz.uk)
-  -p <psk>           : pre-shared key for HMAC authwentication (signing of messages)
+  -p <psk>           : pre-shared key for HMAC authentication (signing of messages)
   -c                 : enable sending Mode-A/C message (not recommended)
   -y                 : enable sending Mode-S Short messages (not recommended)
   -e <level>         : control which Mode-S Extended Squitter DF codes are sent (default = 1)
@@ -176,6 +176,17 @@ OPTIONS= line of the config file - here is the full list:
 
 however most have sensible defaults and are therefore not needed in operation.
 
+## Logging
+
+The feed protocol is real-time and does not maintain a logfile as there is
+nothing to log.
+
+
+## Receiver Status
+
+The website now provide a status page which you can use to check your
+receiver operation. See [STATUS.md](STATUS.md)
+
 
 ## Wire protocol
 
@@ -188,7 +199,7 @@ In addition to the ADS-B data, we send some telemetry about the software and the
 it is running on to understand performance and discover bugs.
 
 We also gather statistics about the radio channel and message types and rates
-of receiption to understand radio channel utilisation.
+of reception to understand radio channel utilisation.
 
 For details see [TELEMETRY.md](TELEMETRY.md) and [STATS.md](STATS.md)
 
@@ -206,9 +217,9 @@ This software ("Radar") is Copyright (C) 2023 by Michael J. Tubby B.Sc. MIET G8T
 
 ### Acknowledgements
 
-Portions of this project (sha256, hmac-sha256) use open source code contributed by Apple Inc. and are duly acknowleged.
+Portions of this project (sha256, hmac-sha256) use open source code contributed by Apple Inc. and are duly acknowledged.
 
-Portions of this project (sha512) use open source code contributed by Aaron D. Gifford and Jelte Jansen and are duly acknowleged.
+Portions of this project (sha512) use open source code contributed by Aaron D. Gifford and Jelte Jansen and are duly acknowledged.
 
 ### License
 
