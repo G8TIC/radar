@@ -1,9 +1,9 @@
 # Receiver Status
 
-Once you have your receiver confiogured and working you can check it's
+Once you have your receiver configured and working you can check it's
 status at the aggregator using the 'mystatus' facility.
 
-You send a request to the main website inclduing your charing key and the
+You send a request to the main website inclduing your sharing key and the
 website will return a JSON object containing the current status of your
 receiver.
 
@@ -12,9 +12,9 @@ receiver.
 
 The request is a HTTPS GET on the following URL:
 
-...
+```
     https://www.1090mhz.uk/mystatus.php?key=0x7000000000000000
-...
+```
 
 Where 'key' is your 64-bit sharing key expressed as a hexadecimal number.
 
@@ -23,7 +23,7 @@ Where 'key' is your 64-bit sharing key expressed as a hexadecimal number.
 
 The server resturns a JSON object as follows
 
-...
+```
 {
     "id": 1,
     "name": "NAME",
@@ -59,7 +59,7 @@ The server resturns a JSON object as follows
     "percent": 41.56,
     "contrib": 4.56
 }
-...
+```
 
 Most of the fields are self explanitory.
 
