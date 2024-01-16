@@ -76,6 +76,7 @@ which will always be less than max_range.
 The percent figure indicates the percentage of messages your station sent
 the aggregator and the aggregator used.
 
-The contrib value is a percentage of how many messages that teh aggregator
-used from yout station compared with everyone else.
+The contrib value is a percentage of how many messages that the aggregator
+used from yout station compared with everyone else and is your overall
+contribution score.
 
