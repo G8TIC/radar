@@ -1,8 +1,8 @@
 [Unit]
 Description=Mike's ADS-B Radar Daemon
 After=network-online.target
-Wants=dump1090-fa.service
-After=dump1090-fa.service
+#Wants=dump1090-fa.service
+#After=dump1090-fa.service
 
 [Service]
 User=nobody

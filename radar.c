@@ -838,8 +838,10 @@ int main(int argc, char *argv[])
          * check params and sanity
          */
 
-        if (!protocol)
-                qerror("radar: no protocol specified, use -a -b -B or -G");
+        if (!protocol) {
+                qerror("radar: no client protocol specified, use -a -b -B or -G ... assuming Beast/TCP ...");
+                protocol = RADAR_PROTOCOL_BEAST_TCP;
+        }
 
         if (!gotkey || key == 0)
                 qerror("radar: must specify your API key with -k <key>\n");
