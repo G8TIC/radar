@@ -25,6 +25,13 @@
  *	https://mode-s.org/decode/book-the_1090mhz_riddle-junzi_sun.pdf
  *
  *
+ * SUPPORTED DEVICES
+ *
+ * Radar supports TLS-SDR type dongles using dump1090 or readsb and supports
+ * USB connections to dedicated Mode-S BEAST recivers and GNS 5892/5894 using
+ * HULC (modified Beast protocol).
+ *
+ *
  * ENCRYPTION AND AUTHENTICATION
  *
  * Radar messages are broadcast un-encrypted by aircraft and hence there seems to
@@ -163,6 +170,7 @@
 #include <sys/time.h>
 #include <linux/socket.h>
 #include <linux/ip.h>
+#include <termios.h>
 
 #include "radar.h"
 #include "chain.h"
@@ -170,6 +178,8 @@
 #include "xtimer.h"
 #include "avr.h"
 #include "beast.h"
+#include "beast_tcp.h"
+#include "beast_serial.h"
 #include "dupe.h"
 #include "authtag.h"
 #include "ustime.h"
@@ -185,7 +195,7 @@
  */
 int ending = 0;
 int isdaemon = 0;
-int protocol = RADAR_PROTOCOL_BEAST;
+int protocol = 0;
 int dosyslog = 0;
 int dologfile = 0;
 int dostats = 0;
@@ -212,6 +222,7 @@ uint32_t dupe_ss_count = 0;
 uint32_t dupe_es_count = 0;
 uint32_t send_count = 0;
 uint32_t byte_count = 0;
+char serport[BEAST_SERIAL_PORT_NAME+1] = "/dev/ttyUSB0";
 
 
 /*
@@ -219,11 +230,21 @@ uint32_t byte_count = 0;
  */
 void cleanup(void)
 {
-        /* close BEAST or AVR connection */
-        if (protocol == RADAR_PROTOCOL_BEAST)
-                beast_close();
-        else if (protocol == RADAR_PROTOCOL_AVR)
-                avr_close();
+        /* close connection */
+        switch (protocol) {
+                case RADAR_PROTOCOL_BEAST_TCP:
+                        beast_tcp_close();
+                        break;
+                
+                case RADAR_PROTOCOL_AVR:
+                        avr_close();
+                        break;
+                        
+                case RADAR_PROTOCOL_BEAST_SERIAL:
+                case RADAR_PROTOCOL_GNS_SERIAL:
+                        beast_serial_close();
+                        break;
+        }
 
         /* close down UDP */
         if (udpfd) {
@@ -669,14 +690,27 @@ int main(int argc, char *argv[])
         /*
          * parse command line args
          */
-        while ((rc = getopt(argc, argv, "k:l:r:h:p:u:g:s:t:q:n:s:e:abfvdcyxh?")) >= 0) {
+        while ((rc = getopt(argc, argv, "k:l:r:h:p:u:g:s:t:q:n:e:S:abBGfvdcyxh?")) >= 0) {
                 switch (rc) {
 
                 case 'a':
                         protocol = RADAR_PROTOCOL_AVR;
                         break;
 
-                case 'b':					/* ignore old BEAST switch - this is now assumed */
+                case 'b':
+                        protocol = RADAR_PROTOCOL_BEAST_TCP;                
+                        break;
+
+                case 'B':
+                        protocol = RADAR_PROTOCOL_BEAST_SERIAL;
+                        break;
+
+                case 'G':
+                        protocol = RADAR_PROTOCOL_GNS_SERIAL;
+                        break;
+
+                case 'S':
+                        strncpy(serport, optarg, BEAST_SERIAL_PORT_NAME);
                         break;
 
                 case 'k':
@@ -772,7 +806,10 @@ int main(int argc, char *argv[])
                         printf("  -k <key>           : sharing key (identity) of this receiver station\n");
                         printf("  -h <hostname>      : hostname of central aggregator\n");
                         printf("  -p <psk>           : pre-shared key for HMAC authentication (signing of messages)\n");
-                        printf("  -a                 : force use of AVR protocol rather than BEAST\n");
+                        printf("  -a                 : use AVR protocol rather than BEAST\n");
+                        printf("  -b                 : use BEAST protocol\n");
+                        printf("  -B                 : use Mode-S BEAST via USB connection\n");
+                        printf("  -G                 : use GNS 5892/5894T HULC via serial connection\n");
                         printf("  -c                 : enable sending Mode-A/C message (not recommended)\n");
                         printf("  -y                 : enable sending Mode-S Short messages (not recommended)\n");
                         printf("  -e <level>         : control which Mode-S Extended Squitter DF codes are sent (default = 1)\n");
@@ -787,6 +824,8 @@ int main(int argc, char *argv[])
                         printf("  -n <number>        : number of DNS lookup attempts (default: infinite)\n");
                         printf("  -v                 : display version information and exit\n");
                         printf("  -x|xx|xxx          : set debug level\n");
+                        printf("  -B                 : set protocol to Beast over serial (for Mode-S BEAST receiver)\n");
+                        printf("  -S <serial port>   : specify serial port for Mode-S Beast connection (default: /dev/ttyUSB0)\n");
                         printf("  -?                 : help (this output)\n");
                         printf("\n");
                         exit(0);
@@ -798,6 +837,10 @@ int main(int argc, char *argv[])
         /*
          * check params and sanity
          */
+
+        if (!protocol)
+                qerror("radar: no protocol specified, use -a -b -B or -G");
+
         if (!gotkey || key == 0)
                 qerror("radar: must specify your API key with -k <key>\n");
 
@@ -809,7 +852,6 @@ int main(int argc, char *argv[])
 
         if (send_es == 0)
                 printf("Warning: Sending Mode-S Extended Squitter is suppressed - are you sure?\n");
-                
 
         
         /*
@@ -962,16 +1004,37 @@ int main(int argc, char *argv[])
         }
 
         /*
-         * initialise the ADS-B protocol (BEAST or AVR)
+         * initialise the appropriate ADS-B protocol source
          */
-        if (protocol == RADAR_PROTOCOL_BEAST) {
-                beast_init(localaddress);
-                if (dostats)
-                        printf("Using BEAST protocol on %s:%d (preferred)\n", localaddress, BEAST_PORT);
-        } else {
-                avr_init(localaddress);
-                if (dostats)
-                        printf("Using AVR protocol on %s:%d (fallback)\n", localaddress, AVR_PORT);
+        switch (protocol) {
+
+                case RADAR_PROTOCOL_BEAST_TCP:
+                        beast_tcp_init(localaddress);
+                        if (dostats)
+                                printf("Using BEAST over TCP on %s:%d (preferred)\n", localaddress, BEAST_TCP_PORT);
+                        break;
+                
+                case RADAR_PROTOCOL_AVR:
+                        avr_init(localaddress);
+                        if (dostats)
+                                printf("Using AVR protocol on %s:%d (fallback)\n", localaddress, AVR_PORT);
+                        break;
+                        
+                case RADAR_PROTOCOL_BEAST_SERIAL:
+                        beast_serial_init(serport, B3000000);
+                        if (dostats)
+                                printf("Using Mode-S BEAST over serial/USB on device: %s speed: 3Mbps\n", serport);
+                        break;
+
+                case RADAR_PROTOCOL_GNS_SERIAL:
+                        beast_serial_init(serport, B921600);
+                        if (dostats)
+                                printf("Using GNS/HULC/BEAST over USB/serial on device: %s speed: 921600bps\n", serport);
+                        break;
+
+                default:
+                        qerror("Unsupported client protocol");
+                        break;
         }
 
         /*
@@ -983,10 +1046,22 @@ int main(int argc, char *argv[])
          * forward traffic ...
          */
         do {
-                if (protocol == RADAR_PROTOCOL_BEAST)
-                        beast_run();
-                else
-                        avr_run();
+                switch (protocol) {
+
+                        case RADAR_PROTOCOL_BEAST_TCP:
+                                beast_tcp_run();
+                                break;
+                
+                        case RADAR_PROTOCOL_AVR:
+                                avr_run();
+                                break;
+                        
+                        case RADAR_PROTOCOL_BEAST_SERIAL:
+                        case RADAR_PROTOCOL_GNS_SERIAL:
+                                beast_serial_run();
+                                break;
+                }        
+
 
                 if (xtimer_expired(&timer)) {			/* 100 mS timer */
 
@@ -1001,10 +1076,17 @@ int main(int argc, char *argv[])
                                         radar_send_keepalive();
                         
                                 /* do approprioate housekeeping */
-                                if (protocol == RADAR_PROTOCOL_BEAST)
-                                        beast_second();
-                                else
-                                        avr_second();
+                                switch (protocol) {
+                                        case RADAR_PROTOCOL_BEAST_TCP:
+                                        case RADAR_PROTOCOL_BEAST_SERIAL:
+                                        case RADAR_PROTOCOL_GNS_SERIAL:
+                                                beast_second();
+                                                break;
+                
+                                        case RADAR_PROTOCOL_AVR:
+                                                avr_second();
+                                                break;
+                                }        
 
                                 /* foreground stats */
                                 if (dostats) {

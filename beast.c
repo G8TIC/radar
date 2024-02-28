@@ -1,5 +1,5 @@
 /*
- * beast.c -- Implement the ADS-B BEAST protocol
+ * beast.c -- Implement the ADS-B BEAST protocol over TCP
  * Author: Michael J. Tubby B.Sc. MIET  mike@tubby.org
  *
  * ABSTRACT
@@ -32,6 +32,8 @@
 #include "radar.h"
 #include "defs.h"
 #include "beast.h"
+#include "beast_tcp.h"
+#include "beast_serial.h"
 #include "telemetry.h"
 #include "hex.h"
 #include "xtimer.h"
@@ -47,24 +49,9 @@ extern int debug;
 /*
  * local variables
  */
-static enum beaststate constate;
 static int state;
-static int fd;
-static char hostname[HOSTNAME_LEN+1];
-static struct sockaddr_in saddr;
-static xtimer_t beast_retry;
 static uint16_t pps;
 
-
-/*
- * chgconstate() - change connection state with optional debugging
- */
-static void chgconstate(enum beaststate newstate)
-{
-        if (debug > 1)
-                printf("chgconstate(): %d -> %d\n", constate, newstate);
-        constate = newstate;
-}
 
 
 /*
@@ -91,9 +78,9 @@ static void process_frame(uint8_t *bp, int size)
 
 
 /*
- * process_input() - process a hunk of BEAST protocol input from the TCP connection
+ * beast_process_input() - process a chunk of BEAST protocol input from a TCP or serial connection
  */
-static void process_input(uint8_t *bp, int size)
+void beast_process_input(uint8_t *bp, int size)
 {
         static uint8_t buf[BEAST_MAX_FRAME];
         static uint8_t *op = buf;
@@ -175,148 +162,6 @@ static void process_input(uint8_t *bp, int size)
 }
 
 
-/*
- * connect_socket() - attempt to make a connection - factorised code
- */
-static int connect_socket(void)
-{
-        struct hostent *hostinfo;
-
-        fd = socket(AF_INET, SOCK_STREAM, 0);
-
-        if (fd < 0)
-                qerror("connect_socket(): Could not create socket\n");
-
-        memset(&saddr, 0, sizeof(saddr)); 
-        saddr.sin_family = AF_INET;
-        saddr.sin_port = htons(BEAST_PORT);
-
-        hostinfo = gethostbyname(hostname);
-
-        if (hostinfo != NULL) {
-        
-                memcpy(&saddr.sin_addr.s_addr, hostinfo->h_addr, hostinfo->h_length);
-
-                if (connect(fd, (struct sockaddr *)&saddr, sizeof(saddr)) >= 0) {
-                        ++telemetry.connect_success;
-                        return 1;
-                } else {
-                        ++telemetry.connect_fail;
-                        return 0;
-                }
-        }
-        
-        return 0;
-}
-
-
-/*
- * beast_init() - initialise the BEAST
- */
-void beast_init(char *addr)
-{
-        memset(&stats, 0, sizeof(stats_t));
-        chgconstate(0);
-        chgstate(0);
-        pps = 0;
-
-        strncpy(hostname, addr, HOSTNAME_LEN);
-        
-        chgconstate(BEAST_STATE_DISCONNECTED);
-}
-
-
-/*
- * beast_close() - shutdown the BEAST
- */
-void beast_close(void)
-{
-        if (fd) {
-                int rc = close(fd);
-
-                if (rc < 0) {
-                        qerror("beast_close(): error calling close(): %s (%d)\n", strerror(errno), errno);
-                }
-                
-                fd = 0;
-        }                
-}
-
-
-/*
- * beast_run() - run the BEAST protocol connection
- */
-void beast_run(void)
-{
-        fd_set set;
-        struct timeval timeout;
-        static uint8_t buf[BEAST_MAX_READ];
-        int size, rc;
-
-        switch (constate) {
-
-                case BEAST_STATE_DISCONNECTED:
-                        if (connect_socket()) {
-                                /* connection success */
-                                chgconstate(BEAST_STATE_CONNECTED);
-                                xtimer_stop(&beast_retry);
-                        } else {
-                                /* connect failed */
-                                close(fd);
-                                xtimer_start(&beast_retry, BEAST_RETRY);
-                                chgconstate(BEAST_STATE_RETRY_WAIT);
-                        }
-                        break;
-                        
-                case BEAST_STATE_CONNECTED:
-                        {
-                                FD_ZERO(&set);
-                                FD_SET(fd, &set);
-
-                                timeout.tv_sec = 0;
-                                timeout.tv_usec = BEAST_SELECT_TIMEOUT;
-                                
-                                rc = select(fd+1, &set, NULL, NULL, &timeout);
-
-                                if (rc < 0) {
-                                        /* error on connection */
-                                        close(fd);
-                                        xtimer_start(&beast_retry, BEAST_RETRY);
-                                        chgconstate(BEAST_STATE_RETRY_WAIT);
-                        	        ++telemetry.socket_error;
-                                        
-                                } else if (rc == 0) {
-                                        /* timeout no data*/
-                                        ; 
-                                } else {
-                                        /* data available or connection closed - do a read */
-                                        size = read(fd, buf, sizeof(buf));
-
-                                        if (size > 0) {
-                                                /* we have some data */
-                                                process_input(buf, size);
-                                                
-                                        } else {
-                                                /* size is zero -> connection closed */
-                                                close(fd);
-                                                xtimer_start(&beast_retry, BEAST_RETRY);
-                                                chgconstate(BEAST_STATE_RETRY_WAIT);
-                                                ++telemetry.disconnect;
-                                        }                        
-                                }
-                        }
-                        break;
-                        
-                case BEAST_STATE_RETRY_WAIT:
-                        if (xtimer_expired(&beast_retry)) {
-                                /* when the timer expires try to connect again */
-                                chgstate(0);
-                                chgconstate(BEAST_STATE_DISCONNECTED);
-                        }
-                        break;
-        }
-}
-
 
 /*
  * beast_second() - housekeeping
@@ -324,6 +169,16 @@ void beast_run(void)
 void beast_second(void)
 {
         telemetry.packets_per_second = pps;
+        pps = 0;
+}
+
+
+/*
+ * beast_init() - initialise common Beast stuff
+ */
+void beast_init(void)
+{
+        chgstate(0);
         pps = 0;
 }
 

@@ -17,13 +17,16 @@
 #define RADAR_PORT				5997
 
 #define RADAR_PROTOCOL_NONE			0
-#define RADAR_PROTOCOL_BEAST			1
+#define RADAR_PROTOCOL_BEAST_TCP		1
 #define RADAR_PROTOCOL_AVR			2
+#define RADAR_PROTOCOL_BEAST_SERIAL		3
+#define RADAR_PROTOCOL_GNS_SERIAL		4
 
 #define RADAR_OPCODE_RESERVED			0x00
 #define RADAR_OPCODE_MODE_AC			0x01
 #define RADAR_OPCODE_MODE_S			0x02
 #define RADAR_OPCODE_MODE_ES			0x03
+#define RADAR_OPCODE_MODE_ES_MULTIFRAME		0x20
 #define RADAR_OPCODE_KEEPALIVE			0x80
 #define RADAR_OPCODE_SYSTEM_TELEMETRY		0x81
 #define RADAR_OPCODE_RADIO_STATS		0x82
@@ -32,6 +35,14 @@
 
 
 extern int protocol;
+
+
+typedef struct {
+        uint8_t mlat[MLAT_LEN];			/* Multi-lateration timestamp */
+        uint8_t rssi;        			/* Received signal strength indication */
+        uint8_t data[MODE_ES_LEN];		/* data */
+}  __attribute__((packed)) mode_es_frame_t;
+
 
 
 /*
@@ -81,7 +92,7 @@ typedef struct {
  */
 typedef struct {
         uint64_t key;                           /* API key for this radar station */
-        uint64_t ts;                            /* Timestamp (uS) */
+        uint64_t ts;                            /* Message timestamp (uS) */
         uint32_t seq;                           /* Message sequence number */
         uint8_t opcode;				/* Opcode: message type */
         uint8_t mlat[MLAT_LEN];			/* Multi-lateration timestamp */
