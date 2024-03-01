@@ -48,6 +48,8 @@ fi
 BEAST=`netstat -pan | grep LISTEN | grep -Eo '30005' | uniq`
 AVR=`netstat -pan | grep LISTEN | grep -Eo '30002' | uniq`
 
+
+
 #
 # Ask user for their info ...
 #
