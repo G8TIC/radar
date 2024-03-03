@@ -1,10 +1,10 @@
 # Installation
-This is the quick installation setup guide for 'radar' - the ADS-B feeder sofwtare for 1090MHz UK.
+This is the quick installation setup guide for 'radar' - the ADS-B feeder software for 1090MHz UK.
 
 ## Working assumptions
 Some working assumptions:
 1. You have a Raspberry Pi or Intel/AMD based Linux box
-2. You have Linux OS based on Debian 10.x or later, Debian, Raspberry Pi OS, Ubuntu, Devuan, etc..
+2. You have a Linux OS based on Debian 10.x or later
 3. You have a root access to your machine
 4. Your system has an supported ADS-B receiver and radio sub-system
 5. You have build envionment (GCC, make and git) installed
@@ -13,22 +13,25 @@ Some working assumptions:
 
 ### Hardware
 You have Raspberry Pi or Intel/AMD based Linux box - this can be a 32-bit or
-64- bit system based on ARM or Intel/AMD CPU.
+64- bit system based on ARM, Intel or AMD CPUs.  Anything from an NXP iMX6
+upwards including AMD Geode, Intel Atrom/Celeron/Pentium/more should work
+fine.
 
 ### Operating system
-Your harware is running Debian 10.x or Debian derived OS like Raspbian,
-Raspberry Pi OS, etc.
+Your harware is running a Linux OS based on Debian 10.x or Debian derived OS like Raspbian,
+Raspberry Pi OS, Ubuntu, Arch, Devuan, etc.
 
 ### Root access
 You need access to your system with either a screen and keyboard or SSH over
-the network and the 'sudo' command or a root login.
+the network and the 'su' or 'sudo' command or a root login.
 
 ## ADS-B receiver
-You have either an RTL-SDR dongle or other supported SDR receiver, or you
-have a Mode-S Beast or GNS 5984T connected via USB adapter.
+You have either an RTL-SDR dongle or other supported SDR receiver such as
+AirSpy Mini, Mode-S Beast or GNS 5984T connected via USB adapter with the
+appropriate software.
 
-Your system has dump1090-mutability, dump1090-fa or readsb installed and the
-Beast protocol is accessible on localhost TCP port 30005.
+Your system has dump1090-mutability, dump1090-fa or readsb installed (or
+dedicated sofwtare) and has the Beast protocol is accessible on localhost TCP port 30005.
 
 ## Station identification
 Drop me an email at info@1090mhz.uk with some basic information about your station:
