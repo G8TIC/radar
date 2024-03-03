@@ -17,7 +17,7 @@ You have Raspberry Pi or Intel/AMD based Linux box - this can be a 32-bit or
 upwards including Raspberry Pi 3/3/5, small industrial systems based on AMD Geode,
 Intel Atom/Celeron/Pentium or more should work fine.
 
-I have feeders running on Sophos XH85 firewall boxes based on Atom 3000,
+I have feeders running on re-purposed Sophos XG85 firewall boxes based on Atom 3000,
 custom NXP iMX8 systems, Intel Core i5 desktops and other deices like Intel
 NUC.
 
