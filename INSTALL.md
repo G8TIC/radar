@@ -30,19 +30,32 @@ You need access to your system with either a screen and keyboard or SSH over
 the network and the 'su' or 'sudo' command or a root login in order to
 install the code.
 
+### System time
+The feeder protocol uses precision timestamps and if your computer's clock
+drifts by more than 1 second then your packets won't be processed.
+
+Use systemd's 'timedatectl' or install Network Time Protocol (NTP) to keep
+your clock accurate.
+
 ## ADS-B receiver
-You have either an RTL-SDR dongle or other supported SDR receiver such as
-AirSpy Mini, Mode-S Beast or GNS 5984T connected via USB adapter with the
+You have either an RTL-SDR dongle, an other supported SDR receiver such as
+AirSpy Mini, or a hardware/dedicated receiver such as a Mode-S Beast or GNS 5984T connected via USB with the
 appropriate software.
 
-Your system has the Beast protocol is accessible on localhost TCP port 30005
-which is typically provided by dump1090-mutability, dump1090-fa or readsb.
+Your system has the Beast protocol accessible on localhost TCP port 30005
+which is typically provided by dump1090-mutability, dump1090-fa or readsb or
+a serial port connection.
 
 Some hardware has dedicated software like 'airspy_adsb' for the Airspy Mini.
 
 The Mode-S Beast by DL4MEA has a serial over USB interface and can be
 directly connected if you don't need dump1090/readsb to act as a multiplexer
 for feeding other systems.
+
+### Remote receiver
+It is possible to run the feeder on one machine and connect to the Beast
+protocol on a different computer on your LAN using the "-r <remote ip>"
+option.
 
 ## Station identification
 Drop me an email at info@1090mhz.uk with some basic information about your station:
