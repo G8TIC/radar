@@ -54,8 +54,9 @@ for feeding other systems.
 
 ### Remote receiver
 It is possible to run the feeder on one machine and connect to the Beast
-protocol on a different computer on your LAN using the "-r <remote ip>"
-option.
+protocol on a different computer on your LAN using the "-r" CLI option.
+
+By default radar assumes the connection is on IPv4 localhost (127.0.0.1).
 
 ## Station identification
 Drop me an email at info@1090mhz.uk with some basic information about your station:
