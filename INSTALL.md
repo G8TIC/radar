@@ -18,7 +18,7 @@ upwards including Raspberry Pi 3/3/5, small industrial systems based on AMD Geod
 Intel Atom/Celeron/Pentium or more should work fine.
 
 I have feeders running on re-purposed Sophos XG85 firewall boxes based on Atom 3000,
-custom NXP iMX8 systems, Intel Core i5 desktops and other deices like Intel
+custom NXP iMX8 systems, Intel Core i5 desktops and other devices like Intel
 NUC.
 
 ### Operating system
@@ -27,15 +27,22 @@ Raspberry Pi OS, Ubuntu, Arch, Devuan, etc.
 
 ### Root access
 You need access to your system with either a screen and keyboard or SSH over
-the network and the 'su' or 'sudo' command or a root login.
+the network and the 'su' or 'sudo' command or a root login in order to
+install the code.
 
 ## ADS-B receiver
 You have either an RTL-SDR dongle or other supported SDR receiver such as
 AirSpy Mini, Mode-S Beast or GNS 5984T connected via USB adapter with the
 appropriate software.
 
-Your system has dump1090-mutability, dump1090-fa or readsb installed (or
-dedicated sofwtare) and has the Beast protocol is accessible on localhost TCP port 30005.
+Your system has the Beast protocol is accessible on localhost TCP port 30005
+which is typically provided by dump1090-mutability, dump1090-fa or readsb.
+
+Some hardware has dedicated software like 'airspy_adsb' for the Airspy Mini.
+
+The Mode-S Beast by DL4MEA has a serial over USB interface and can be
+directly connected if you don't need dump1090/readsb to act as a multiplexer
+for feeding other systems.
 
 ## Station identification
 Drop me an email at info@1090mhz.uk with some basic information about your station:
@@ -51,8 +58,9 @@ I will send you a sharing key - a 64-bit number in hexadecimal, for example:
 If you have more than one receiver then you need a separate key for each receiver.
 
 ### Pass-phrase
-Version 2.0 of the feeder protocol uses digital signatures on the UDP
-messages sent to the central aggregator.
+Version 2.0 of the feeder protocol uses digital signatures (auithentication
+tags) on the UDP messages sent to the central aggregator to guard against
+message corruption, forgery and replay attacks.
 
 I will provide you a 16-character random string which is the pass-phase to
 generate the cryptographic key used to digitally sign the messages.
@@ -68,7 +76,7 @@ If you don't have the C compiler and tools installed then use the command:
 to install them.
 
 ### Download the sofwtare and install
-Download the 'radar' source code from Github and install as follows:
+As an ordinary user (not root) download the 'radar' source code from Github and install as follows:
 ```
     git clone https://github.com/G8TIC/radar
     cd radar
@@ -78,7 +86,8 @@ Download the 'radar' source code from Github and install as follows:
 ```
 and enter the sharing key and pass-phrase when requested.
 
-The setup phase will create /etc/default/radar and start the service.
+The setup phase will create /etc/default/radar, work out which init system
+you have (systemd ot sysv-init)  and start the service.
 
 
 That's it ;-)
