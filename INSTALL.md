@@ -8,7 +8,7 @@ Some working assumptions:
 3. You have a root access to your machine
 4. Your system has a supported ADS-B receiver and radio sub-system
 5. Your ADS-B receiving system is already tested and working
-6. You have a software development envionment (GCC, make and git) installed
+6. You have a software development environment (GCC, make and git) installed
 
 ## Computer system
 
@@ -88,8 +88,21 @@ As an ordinary user (not root) download the 'radar' source code from Github and 
 ```
 and enter the sharing key and pass-phrase when requested.
 
-The setup script will create /etc/default/radar, work out which init system you have (systemd ot sysv-init)
-and install the appropriate start-up script, and start the service.
+The setup script will create /etc/default/radar, work out which init system you have (systemd
+or SysV-init) and install the appropriate start-up script, and start the service.
+
+
+## Check operation of your feed
+
+You can check the operation of your feed using the 'mystatus' feature on the aggregator.
+
+Open the link below but replace the example Sharing Key (below) with your own Sharing Key:
+
+    https://www.1090mhz.uk/mystatus.php?key=0x7F43A1B7DEF44C7A
+
+and you will get a JSON status page that includes your status ("online" true or false) and various statistics.
+
+
 
 
 That's it ;-)
