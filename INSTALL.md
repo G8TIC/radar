@@ -1,5 +1,5 @@
 # Installation
-This is the quick installation setup guide for 'radar' - the ADS-B feeder software for 1090MHz UK.
+This is the installation and setup guide for 'radar' - the ADS-B feeder software for 1090MHz UK.
 
 ## Working assumptions
 Some working assumptions:
@@ -7,7 +7,8 @@ Some working assumptions:
 2. You have a Linux OS based on Debian 10.x or later
 3. You have a root access to your machine
 4. Your system has a supported ADS-B receiver and radio sub-system
-5. You have build envionment (GCC, make and git) installed
+5. Your ADS-B receiving system is already tested and working
+6. You have a software development envionment (GCC, make and git) installed
 
 ## Computer system
 
