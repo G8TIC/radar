@@ -10,7 +10,6 @@
 #include <stdint.h>
 
 #define BEAST_TCP_PORT			30005		/* BEAST protocol port */
-#define BEAST_RETRY			3000L		/* connection retry interval - 3 seconds */
 #define BEAST_SELECT_TIMEOUT		10000L		/* 10mS */
 #define BEAST_MAX_FRAME			22		/* maximum size of a Beast data frame */
 #define BEAST_MAX_READ			1024		/* maximum TCP read size */

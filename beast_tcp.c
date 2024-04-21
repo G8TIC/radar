@@ -199,6 +199,9 @@ void beast_tcp_run(void)
                         break;
                         
                 case BEAST_TCP_RETRY_WAIT:
+
+                        usleep(1000000);		/* wait 100mS before polling timer */
+                        
                         if (xtimer_expired(&beast_retry)) {
                                 /* when the timer expires try to connect again */
                                 chgconstate(BEAST_TCP_DISCONNECTED);

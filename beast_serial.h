@@ -10,7 +10,6 @@
 #include <termios.h>
 
 #define BEAST_SERIAL_PORT_NAME		32		/* BEAST serial port name max length */
-#define BEAST_RETRY			3000L		/* connection retry interval - 3 seconds */
 #define BEAST_SELECT_TIMEOUT		10000L		/* 10mS */
 #define BEAST_MAX_FRAME			22		/* maximum size of a Beast data frame */
 #define BEAST_MAX_READ			1024		/* maximum TCP read size */

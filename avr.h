@@ -10,7 +10,7 @@
 #include "defs.h"
 
 #define AVR_PORT			30002			/* AVR protocol port */
-#define AVR_RETRY			3000L			/* connection retry interval - 3 seconds */
+#define AVR_RETRY			5000L			/* connection retry interval - 5 seconds */
 #define AVR_SELECT_TIMEOUT		10000L
 
 #define AVR_MAX_DATA			MODE_ES_LEN

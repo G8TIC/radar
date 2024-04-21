@@ -295,6 +295,9 @@ void avr_run(void)
                         break;
 
                 case AVR_STATE_RETRY_WAIT:
+
+                        usleep(100000);         /* wait 100mS before polling timer */
+
                         if (xtimer_expired(&avr_retry)) {
                                 /* when the timer expires try to connect again */
                                 chgstate(0);

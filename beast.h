@@ -13,6 +13,8 @@
 #define BEAST_MAX_READ			1024		/* maximum TCP read size */
 #define BEAST_ESC			0x1A		/* Escape character used in BEAST frames */
 
+#define BEAST_RETRY                     5000L           /* connection retry interval - 5 seconds */
+
 
 /*
  * exported functions
