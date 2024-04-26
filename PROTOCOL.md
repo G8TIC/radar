@@ -68,7 +68,7 @@ keep-alive so that the aggregator knows you have not gone away.
 ### Radio Statistics
 
 The 1090MHz radio channel local to you may contain a huge amount of traffic
-that is meaningless to us including legcacy Mode-A, Mode-C and Mode-S
+that is meaningless to us including legacy Mode-A, Mode-C and Mode-S
 (short) messages.
 
 We count the quantity of these messages to understand how busy the radio
