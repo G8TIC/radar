@@ -168,7 +168,7 @@ int dupe_clean(void)
 
         count = count_ss + count_es;
         
-        if (debug && count)
+        if (debug > 2 && count)
                 printf("dupe_clean(): deleted %d SS and %d ES\n", count_ss, count_es);
 
         return count;

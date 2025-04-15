@@ -3,12 +3,14 @@ Description=Mike's ADS-B Radar Daemon
 After=network-online.target
 #Wants=dump1090-fa.service
 #After=dump1090-fa.service
+StartLimitIntervalSec=0
 
 [Service]
 User=nobody
 Group=nogroup
 Type=simple
 Restart=always
+RestartSec=3
 EnvironmentFile=/etc/default/radar
 #ExecStartPre=/bin/sleep 2
 ExecStart=/usr/sbin/radar $OPTIONS

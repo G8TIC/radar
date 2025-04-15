@@ -265,6 +265,9 @@ void telemetry_second(void)
 }
 
 
+/*
+ * telemetry_close() - shutdown telemetry
+ */ 
 void telemetry_close(void)
 {
         fclose(tempf);

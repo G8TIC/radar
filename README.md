@@ -168,7 +168,6 @@ OPTIONS= line of the config file - here is the full list:
   -u <uid|username>  : set the UID or username for the process
   -g <gid|group>     : set the GID or group name for the process
   -q <qos>           : set the DSCP/IP ToS quality of service
-  -n <number>        : number of DNS lookup attempts (default: infinite)
   -v                 : display version information and exit
   -x|xx|xxx          : set debug level
   -?                 : help (this output)
@@ -213,7 +212,7 @@ You are welcome to suggest improvements and raise issues or bugs through Github.
 
 ### Copyright
 
-This software ("Radar") is Copyright (C) 2023 by Michael J. Tubby B.Sc. MIET G8TIC. All Rights Reserved.
+This software ("Radar") is Copyright (C) 2023-2025 by Michael J. Tubby B.Sc. MIET G8TIC. All Rights Reserved.
 
 ### Acknowledgements
 

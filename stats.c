@@ -28,7 +28,7 @@ void stats_init(int ival)
                 memset(&stats, 0, sizeof(stats_t));
                 stats.start = (uint32_t)ts;
                 interval = ival;
-                countdown = ival / 2;
+                countdown = 15;			/* first stats after 15 seconds */
         } else {
                 countdown = 0;
         }

@@ -14,6 +14,20 @@
 
 
 /*
+ * qlog() - general purpose log a message routine, which returns
+ */
+void qlog(const char *fmt, ...)
+{
+        va_list vargs;
+
+        va_start(vargs, fmt);
+        vfprintf(stdout, fmt, vargs);
+        va_end(vargs);
+        fflush(stdout);
+}
+
+
+/*
  * qerror() - the general purpose error routine that exits with -1
  */
 void qerror(const char *fmt, ...)

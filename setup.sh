@@ -202,10 +202,13 @@ if [[ $INIT == "systemd" ]]; then
 
         echo "Stop previous instance of radar forwarder..."
         systemctl stop radar
+
         echo "Copy systemd unit file ..."
 	cp radar.unit /etc/systemd/system/radar.service
+
 	echo "Enabling radar service on boot ..."
 	systemctl enable radar
+
 	echo "Starting radar service ..."
 	systemctl start radar
 fi
@@ -220,6 +223,7 @@ if [[ $INIT == "init" ]]; then
 
 	cp radar.init /etc/init.d/radar
 	chmod 755 /etc/init.d/radar
+
 	echo "Enabling radar service on boot ..."
 	/usr/sbin/update-rc.d radar defaults
 	service radar start

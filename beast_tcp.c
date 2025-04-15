@@ -52,17 +52,38 @@ static enum beaststate constate;
 static int fd;
 static char hostname[HOSTNAME_LEN+1];
 static struct sockaddr_in saddr;
-static xtimer_t beast_retry;
-
+//static xtimer_t beast_retry;
+static int retry_counter;
 
 /*
  * chgconstate() - change connection state with optional debugging
  */
 static void chgconstate(enum beaststate newstate)
 {
-        if (debug > 1)
+        if (debug)
                 printf("chgconstate(): %d -> %d\n", constate, newstate);
         constate = newstate;
+}
+
+
+/*
+ * reset_connection() - reset the TCP connection after an error
+ */
+static void reset_connection(void)
+{
+        if (fd) {
+                close(fd);
+                fd = 0;
+        }
+
+        if (debug)
+                printf("reset_connection(): BEAST connection reset... start retry timer...\n");
+        
+//        xtimer_start(&beast_retry, BEAST_RETRY);
+
+        retry_counter = BEAST_CONNECT_RETRY;
+
+        chgconstate(BEAST_TCP_RETRY_WAIT);
 }
 
 
@@ -90,9 +111,17 @@ static int connect_socket(void)
 
                 if (connect(fd, (struct sockaddr *)&saddr, sizeof(saddr)) >= 0) {
                         ++telemetry.connect_success;
+                        
+                        if (debug)
+                                printf("connect_socket(): Connected to BEAST source\n");
+
                         return 1;
                 } else {
                         ++telemetry.connect_fail;
+                        
+                        if (debug)
+                                printf("connect_socket(): Connect to BEAST source FAILED: %s (%d)\n", strerror(errno), errno);
+                        
                         return 0;
                 }
         }
@@ -112,21 +141,23 @@ void beast_tcp_init(char *addr)
         beast_init();
 
         strncpy(hostname, addr, HOSTNAME_LEN);
+
+        fd = 0;
         
         chgconstate(BEAST_TCP_DISCONNECTED);
 }
 
 
 /*
- * beast_close() - shutdown the BEAST
+ * beast_tcp_close() - shutdown the BEAST connection
  */
 void beast_tcp_close(void)
 {
         if (fd) {
                 int rc = close(fd);
 
-                if (rc < 0) {
-                        qerror("beast_close(): error calling close(): %s (%d)\n", strerror(errno), errno);
+                if (debug && rc < 0) {
+                        printf("beast_tcp_close(): error calling close(): %s (%d)\n", strerror(errno), errno);
                 }
                 
                 fd = 0;
@@ -147,18 +178,17 @@ void beast_tcp_run(void)
         switch (constate) {
 
                 case BEAST_TCP_DISCONNECTED:
+                        /* attemtp to connect to BEAST source */
                         if (connect_socket()) {
                                 /* connection success */
                                 chgconstate(BEAST_TCP_CONNECTED);
-                                xtimer_stop(&beast_retry);
+                                //xtimer_stop(&beast_retry);
                         } else {
                                 /* connect failed */
-                                close(fd);
-                                xtimer_start(&beast_retry, BEAST_RETRY);
-                                chgconstate(BEAST_TCP_RETRY_WAIT);
+                                reset_connection();
                         }
                         break;
-                        
+
                 case BEAST_TCP_CONNECTED:
                         {
                                 FD_ZERO(&set);
@@ -171,42 +201,74 @@ void beast_tcp_run(void)
 
                                 if (rc < 0) {
                                         /* error on connection */
-                                        close(fd);
-                                        xtimer_start(&beast_retry, BEAST_RETRY);
-                                        chgconstate(BEAST_TCP_RETRY_WAIT);
+                                        reset_connection();
                         	        ++telemetry.socket_error;
                                         
                                 } else if (rc == 0) {
-                                        /* timeout no data*/
+                                        /* timeout no data - nothing to do here */
                                         ; 
                                 } else {
-                                        /* data available or connection closed - do a read */
+                                        /* data available or connection closed - do a read to find out which */
                                         size = read(fd, buf, sizeof(buf));
 
                                         if (size > 0) {
-                                                /* we have some data - call beast common input handler to decode */
+                                                /* we have data - call beast common input handler to decode */
                                                 beast_process_input(buf, size);
+                                                ++telemetry.socket_reads;
                                                 
-                                        } else {
-                                                /* size is zero -> connection closed */
-                                                close(fd);
-                                                xtimer_start(&beast_retry, BEAST_RETRY);
-                                                chgconstate(BEAST_TCP_RETRY_WAIT);
+                                        } else if (size == 0) {
+                                                /* size is zero -> EOF -> connection closed by peer */
+                                                reset_connection();
                                                 ++telemetry.disconnect;
-                                        }                        
+                                        } else {
+                                                /* size is negative -> error on socket */
+                                                reset_connection();
+                                                ++telemetry.socket_error;
+                                        }
                                 }
                         }
                         break;
-                        
-                case BEAST_TCP_RETRY_WAIT:
 
-                        usleep(1000000);		/* wait 100mS before polling timer */
-                        
+#if 0
+                case BEAST_TCP_RETRY_WAIT:
                         if (xtimer_expired(&beast_retry)) {
                                 /* when the timer expires try to connect again */
                                 chgconstate(BEAST_TCP_DISCONNECTED);
-                        }
+                        } else {
+                                /* wait 100mS before polling timer again (stop loadave being silly) */
+                                usleep(100000);
+                        }  
                         break;
+#endif
+
+                case BEAST_TCP_RETRY_WAIT:
+                        break;
+
+
         }
 }
+
+
+/*
+ * beast_tcp_second() - house keeping
+ */
+void beast_tcp_second(void)
+{
+        /* if we're waiting to reconnect change state when the countdown expires */
+        if (constate == BEAST_TCP_RETRY_WAIT) {
+        
+                if (retry_counter) {
+                        --retry_counter;
+
+                        if (!retry_counter) {
+        
+                                if (debug)
+                                        printf("beast_tcp_second(): change state to allow re-connect\n");
+                                        
+                                chgconstate(BEAST_TCP_DISCONNECTED);
+                        }
+                }
+        }
+}
+
 

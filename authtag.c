@@ -84,7 +84,7 @@ int authtag_check(uint8_t *tag, int taglen, uint8_t *in, int inlen)
 
 
 /*
- * authtag_init() - create two keys for HMAC from user provided inner PSK (ipsk) and outer PSK (opsk)
+ * authtag_init() - create key for ue by HMAC-256 functions later
  *
  * This takes a variable length pass-phase/secret key as the input and generates a 512-bit (64 byte)
  * SHA512 has as the output.

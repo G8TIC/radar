@@ -173,13 +173,13 @@
 #include <termios.h>
 
 #include "radar.h"
-#include "chain.h"
 #include "banner.h"
 #include "xtimer.h"
 #include "avr.h"
 #include "beast.h"
 #include "beast_tcp.h"
 #include "beast_serial.h"
+#include "udp.h"
 #include "dupe.h"
 #include "authtag.h"
 #include "ustime.h"
@@ -187,7 +187,7 @@
 #include "hex.h"
 #include "qerror.h"
 
-#define TIMER_INTERVAL		100L				/* 100 milliseconds */
+#define TIMER_INTERVAL		1000L				/* 1 second */
 
 
 /*
@@ -206,16 +206,14 @@ int send_ss = 0;
 int send_ac = 0;
 int stats_interval = STATS_INTERVAL;
 int telemetry_interval = TELEMETRY_INTERVAL;
+xtimer_t timer;
 uint64_t key;
-char hostname[HOSTNAME_LEN+1] = "adsb-in.1090mhz.uk";
+char hostname[HOSTNAME_LEN+1] = UDP_HOST;
 char psk[PSK_LEN+1] = "secret";
 char localaddress[HOSTNAME_LEN+1] = "127.0.0.1";
 uint32_t seq = 1;
-int udpfd;
-xtimer_t timer;
 char username[USERNAME_LEN+1] = "nobody";
 char groupname[GROUPNAME_LEN+1] = "nogroup";
-int max_lookups = 0;
 int qos = 0;
 stats_t stats;							/* stats for reporting to central aggregator */
 uint32_t dupe_ss_count = 0;
@@ -247,11 +245,7 @@ void cleanup(void)
         }
 
         /* close down UDP */
-        if (udpfd) {
-                fsync(udpfd);
-                close(udpfd);
-                udpfd = 0;
-        }
+        udp_close();
 }
 
 
@@ -260,6 +254,8 @@ void cleanup(void)
  */
 void signal_handler(int signal)
 {
+        qlog("signal_handler(): called with signal=%d", signal);
+
         switch (signal) {
                 case SIGHUP:
                         break;
@@ -270,6 +266,10 @@ void signal_handler(int signal)
 
                 case SIGINT:
                         ++ending;
+                        break;
+                        
+                case SIGPIPE:
+                        qabort("signal_handler(): received SIGPIPE");
                         break;
         }
 }
@@ -310,64 +310,6 @@ gid_t get_gid(const char * group)
         }
 
         return (grp) ? grp->gr_gid : (gid_t)0;
-}
-
-
-#if 0
-/*
- * radar_send() - Send an arbitary message to the aggregator
- */
-void radar_send(uint8_t opcode, uint8_t *data, int len)
-{
-        int size = sizeof(radar_msg_t) + len + AUTHTAG_LEN;			/* message size */
-        radar_msg_t * mp = malloc(size);					/* buffer for message */
-                
-        if (mp) {
-                uint8_t *p = mp->data;						/* point to start of data area */
-                
-                memset(mp, 0, size);						/* start clean */
-
-                mp->key = key;							/* API key */
-                mp->ts = ustime();						/* timestamp uS */
-                mp->seq = seq++;						/* sequence number */
-
-                mp->opcode = opcode;						/* copy opcode */
-                
-                memcpy(p, data, len);						/* copy data */
-                p += len;
-                        
-                authtag_sign(p, AUTHTAG_LEN, (void *)mp, size-AUTHTAG_LEN);	/* add auth tag */
-                p += AUTHTAG_LEN;
-                
-                send(udpfd, mp, size, 0);					/* send message */
-                        
-                free(mp);
-                
-                ++stats.sent;
-        } else {
-                qabort("radar_send(): ran out of memory!\n");
-        }
-}
-#endif
-
-
-
-/*
- * udp_send() - send a UDP/IP message to the aggregator
- */
-static void udp_send(void *buf, int size)
-{
-        /* send to aggregator */                	
-        send(udpfd, buf, size, 0);						/* send message */
-
-        /* update stats */
-        ++stats.tx_count;
-        stats.tx_bytes += size;
-#if 1
-        /* debug dump */
-        if (debug)
-                hex_dump("UDP", buf, size);
-#endif
 }
 
 
@@ -677,20 +619,19 @@ void radar_process(uint8_t mlat[MLAT_LEN], uint8_t rssi, uint8_t *data, int len)
  */
 int main(int argc, char *argv[])
 {
-        struct hostent *hostinfo;
-        struct sockaddr_in src, dst;
-        int rc, i;
+        int rc;
 
         /*
          * catch signals
          */
         signal(SIGINT,  signal_handler);
         signal(SIGTERM, signal_handler);
+        signal(SIGHUP, signal_handler);
 
         /*
          * parse command line args
          */
-        while ((rc = getopt(argc, argv, "k:l:r:h:p:u:g:s:t:q:n:e:S:abBGfvdcyxh?")) >= 0) {
+        while ((rc = getopt(argc, argv, "k:l:r:h:p:u:g:s:t:q:e:S:abBGfvdcyxh?")) >= 0) {
                 switch (rc) {
 
                 case 'a':
@@ -787,10 +728,6 @@ int main(int argc, char *argv[])
                                 qerror("radar: QoS value must in in range 0-63\n");
                         break;
                 
-                case 'n':
-                        max_lookups = atoi(optarg);
-                        break;
-
                 case 'x':
                         debug++;
                         break;
@@ -821,7 +758,6 @@ int main(int argc, char *argv[])
                         printf("  -u <uid|username>  : set the UID or username for the process\n");
                         printf("  -g <gid|group>     : set the GID or group name for the process\n");
                         printf("  -q <qos>           : set the DSCP/IP ToS quality of service\n");
-                        printf("  -n <number>        : number of DNS lookup attempts (default: infinite)\n");
                         printf("  -v                 : display version information and exit\n");
                         printf("  -x|xx|xxx          : set debug level\n");
                         printf("  -B                 : set protocol to Beast over serial (for Mode-S BEAST receiver)\n");
@@ -914,75 +850,6 @@ int main(int argc, char *argv[])
                         qerror("radar: setuid(): Security failure - was able to setuid back to 'root'\n");
         }
 
-
-        /*
-         * Perform DNS look-up for destination host ...
-         *
-         * We may wait here for an extended time if a user has had a power cut and the Raspberry Pi has
-         * rebooted before the broadband comes back online, hence try every 2 seconds indefinately - or
-         * for a limited number of attempts if -n <number> is specified ...
-         *
-         */
-        for (i = 0; ;i++) {
-                hostinfo = gethostbyname(hostname);
-    
-                if (hostinfo) {
-                        if (debug)
-                                printf("Destination is %s (%s) port %u\n", hostinfo->h_name, inet_ntoa(*(struct in_addr*)hostinfo->h_addr), RADAR_PORT);
-                        
-                        break;
-                } else {
-                        if (debug)
-                                printf("DNS lookup for %s failed ... retrying ...\n", hostname);
-                        sleep(2);	                        
-                }
-                
-                if (max_lookups && i >= max_lookups)
-                        qerror("radar: error resolving hostname: %s  errno: %s (%d)\n", hostname, hstrerror(h_errno), h_errno);
-        }
-
-        /*
-         * UDP socket connection.  We use a UDP socket connection for efficiency - this means we
-         * lookup and set up the UDP session parameters in the kernel once and then just keep sending ...
-         */
-
-        /* make a UDP socket */
-        if ((udpfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-                qerror("radar: could not create UDP socket\n");
-        } 
-
-        /* if QoS is specified then set it */
-        if (qos) {
-                const int iptos = qos << 2;		/* QoS in top 6-bits of the IP header */
-                rc = setsockopt(udpfd, IPPROTO_IP, IP_TOS, &iptos, sizeof(iptos));
-        
-                if (rc == -1)
-                        printf("setsockopt(): for UDP QoS returned: %s %d\n", strerror(errno), errno);
-        }
-
-        /* setup my end (source) */ 
-        memset(&dst, 0, sizeof(src));
-        src.sin_family = AF_INET;
-        src.sin_addr.s_addr = htonl(INADDR_ANY);
-        src.sin_port = htons(RADAR_PORT);
-
-        /* setup their end (destination) */
-        memset(&dst, 0, sizeof(dst));
-        dst.sin_family = AF_INET;
-        dst.sin_addr = *(struct in_addr*) hostinfo->h_addr;
-        dst.sin_port = htons(RADAR_PORT);
-
-        /* connect the socket */
-        rc = connect(udpfd, (struct sockaddr*)&dst,sizeof(dst));
-
-        if (rc < 0) {
-                 qerror("radar: could not connect UDP socket\n");
-        
-        } else {
-                if (debug)
-                        printf("UDP socket connected\n");
-        }
-
         /*
          * initialise stats gathering (must do before starting AVR or BEAST)
          */
@@ -993,6 +860,13 @@ int main(int argc, char *argv[])
          * initialise authentication key
          */
         authtag_init(psk);
+
+
+        /*
+         * initialise the UDP sub-system
+         */
+        udp_init(hostname, qos);
+        
 
         /*
          * run in background
@@ -1063,48 +937,51 @@ int main(int argc, char *argv[])
                 }        
 
 
-                if (xtimer_expired(&timer)) {			/* 100 mS timer */
+                if (xtimer_expired(&timer)) {			/* 1 second house keepingtimer */
 
-                        dupe_clean();				/* clean duplicates */
+                        /* clean duplicates */
+                        dupe_clean();
                         
-                        ++i;
-
-                        if (i >= 10) {
-
-                                /* if we've sent no packets in the last second, send a keep alive */
-                                if (send_count == 0)
-                                        radar_send_keepalive();
+                        /* if we've sent no packets in the last second, send a keep alive */
+                        if (send_count == 0)
+                                radar_send_keepalive();
                         
-                                /* do approprioate housekeeping */
-                                switch (protocol) {
-                                        case RADAR_PROTOCOL_BEAST_TCP:
-                                        case RADAR_PROTOCOL_BEAST_SERIAL:
-                                        case RADAR_PROTOCOL_GNS_SERIAL:
-                                                beast_second();
-                                                break;
-                
-                                        case RADAR_PROTOCOL_AVR:
-                                                avr_second();
-                                                break;
-                                }        
-
-                                /* foreground stats */
-                                if (dostats) {
-                                        printf("Packets forwarded: %3u   Not forwarded (dupes): %3u  Bytes per second: %5u\n", send_count, dupe_ss_count+dupe_es_count, byte_count);
-                                }
-
-                                /* clear the per-second stats */                                
-                                send_count = dupe_ss_count = dupe_es_count = byte_count = 0;
+                        /* do approprioate housekeeping */
+                        switch (protocol) {
+                                case RADAR_PROTOCOL_BEAST_TCP:
+                                        beast_tcp_second();
+                                        beast_second();
+                                        break;
                                 
-                                /* do radio stats and device telemetry */
-                                stats_second();
-                                telemetry_second();
+                                case RADAR_PROTOCOL_BEAST_SERIAL:
+                                        beast_second();
+                                        break;
+                                
+                                case RADAR_PROTOCOL_GNS_SERIAL:
+                                        beast_second();
+                                        break;
+                
+                                case RADAR_PROTOCOL_AVR:
+                                        avr_second();
+                                        break;
+                        }        
 
-                                /* reset counter */                                
-                                i = 0;
+                        /* UDP housekeeping */
+                        udp_second();
+
+                        /* foreground stats */
+                        if (dostats) {
+                                printf("Packets forwarded: %3u   Not forwarded (dupes): %3u  Bytes per second: %5u\n", send_count, dupe_ss_count+dupe_es_count, byte_count);
                         }
-                        
-                        /* restart the 100mS interval timer */
+
+                        /* clear the per-second stats */                                
+                        send_count = dupe_ss_count = dupe_es_count = byte_count = 0;
+                                
+                        /* do radio stats and device telemetry */
+                        stats_second();
+                        telemetry_second();
+
+                        /* restart the timer */
                         xtimer_start(&timer, TIMER_INTERVAL);
                 }
 

@@ -6,9 +6,9 @@
 #define _VERSION_H
 
 #define VERSION_MAJOR	2
-#define VERSION_MINOR	4
-#define VERSION_PATCH	3
+#define VERSION_MINOR	5
+#define VERSION_PATCH	0
 
-#define COPYRIGHT       "Copyright (C) 2023-2024 by Michael J. Tubby B.Sc. MIET G8TIC mike@tubby.org All Rights Reserved."
+#define COPYRIGHT       "Copyright (C) 2023-2025 by Michael J. Tubby B.Sc. MIET G8TIC mike@tubby.org All Rights Reserved."
 
 #endif

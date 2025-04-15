@@ -202,12 +202,12 @@ void beast_serial_run(void)
                         break;
                         
                 case BEAST_SERIAL_RETRY_WAIT:
-
-                        usleep(100000);         /* wait 100mS before polling timer */
-                        
                         if (xtimer_expired(&retry)) {
                                 /* when the timer expires try to connect again */
                                 chgconstate(BEAST_SERIAL_DISCONNECTED);
+                        } else {
+                                /* wait 100mS before polling timer again */
+                                usleep(100000);
                         }
                         break;
         }

@@ -6,6 +6,7 @@
 #ifndef _RADAR_H
 #define _RADAR_H
 
+#include <stdio.h>
 #include <stdint.h>
 
 #include "defs.h"

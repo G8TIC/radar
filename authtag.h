@@ -14,6 +14,7 @@
  * exported functions
  */
 void authtag_init(char *);
-void authtag_sign(uint8_t *out, int outlen, void *in, int len);
+void authtag_sign(uint8_t *, int, void *, int);
+int authtag_check(uint8_t *, int, uint8_t *, int);
 
 #endif

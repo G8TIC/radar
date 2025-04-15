@@ -13,7 +13,7 @@
 #define BEAST_SELECT_TIMEOUT		10000L		/* 10mS */
 #define BEAST_MAX_FRAME			22		/* maximum size of a Beast data frame */
 #define BEAST_MAX_READ			1024		/* maximum TCP read size */
-#define BEAST_CONNECT_RETRY		2000L		/* connection retry timer in mS */
+#define BEAST_CONNECT_RETRY		5		/* connection retry timer in seconds */
 #define BEAST_ESC			0x1A		/* Escape character used in BEAST frames */
 
 
