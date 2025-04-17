@@ -254,10 +254,12 @@ void cleanup(void)
  */
 void signal_handler(int signal)
 {
-        qlog("signal_handler(): called with signal=%d", signal);
+        if (debug)
+                printf("signal_handler(): called with signal=%d", signal);
 
         switch (signal) {
                 case SIGHUP:
+                        udp_reset();
                         break;
 
                 case SIGTERM:
@@ -266,10 +268,6 @@ void signal_handler(int signal)
 
                 case SIGINT:
                         ++ending;
-                        break;
-                        
-                case SIGPIPE:
-                        qabort("signal_handler(): received SIGPIPE");
                         break;
         }
 }

@@ -18,7 +18,7 @@ enum udpstate {
         UDP_IDLE,					/* idle state at start-up and after failure/retry */
         UDP_WAIT_LOOKUP,				/* waiting for DNS look-up to complete */
         UDP_WAIT_SOCKET,				/* wait for a socket to be created */
-        UDP_WAIT_CONNECT,
+        UDP_WAIT_CONNECT,				/* wait for socket to be connect()-ed */
         UDP_CONNECTED,					/* Normal run state */
         UDP_RETRY_WAIT					/* Something failed - waiting to restart */
 };
@@ -31,6 +31,6 @@ void udp_init(char *, int);
 void udp_close(void);
 void udp_second(void);
 void udp_send(void *, int);
-
+void udp_reset(void);
 
 #endif

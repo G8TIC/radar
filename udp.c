@@ -7,7 +7,7 @@
  * UDP routines moved to a separate module with it's own state-machine to provide
  * a management layer because the previous code was brittle and had no error recovery.
  *
- * We now run a state-machine that manages DNS look-ups and error recovery
+ * We now run a state-machine that manages DNS look-ups and error recovery.
  *
  */
 
@@ -51,7 +51,6 @@ static int qos;
 static int retry = 0;
 
 
-
 /*
  * chgstate() - change state with optional debugging
  */
@@ -83,14 +82,11 @@ static void reset_connection(void)
 }
 
 
-
 /*
  * host_lookup() - perform DNS lookup on destination hostname
  */
 static int host_lookup(void)
 {
-        printf("host_lookup(): lookup %s\n", hostname);
-
         hostinfo = gethostbyname(hostname);
     
         if (hostinfo) {
@@ -105,7 +101,6 @@ static int host_lookup(void)
         
         return 0;
 }
-
 
 
 /*
@@ -131,7 +126,7 @@ static int make_socket(void)
                 if ((rc = setsockopt(fd, IPPROTO_IP, IP_TOS, &iptos, sizeof(iptos)) < 0)) {
         
                         if (debug)
-                                printf("make_socket(): setsockopt(): for UDP QoS returned: %s (%d)\n", strerror(errno), errno);
+                                printf("make_socket(): setsockopt(): %s (%d)\n", strerror(errno), errno);
                                 
                         return 0;
                 }
@@ -165,7 +160,7 @@ static int connect_socket(void)
         if ((rc = connect(fd, (struct sockaddr*)&dst,sizeof(dst)) < 0)) {
 
                 if (debug)
-                        printf("make_socket(): connect(): %s (%d)\n", strerror(errno), errno);
+                        printf("connect_socket(): %s (%d)\n", strerror(errno), errno);
                         
                 return 0;
         } 
@@ -197,12 +192,12 @@ void udp_send(void *buf, int size)
                 } else {
                         /* send failed */
                         if (debug)
-                                printf("udp_send(): error: %s (%d)", strerror(errno), errno);
+                                printf("udp_send(): %s (%d)", strerror(errno), errno);
+                                
                         reset_connection();
                 }
         }                
 }
-
 
 
 /*
@@ -217,7 +212,6 @@ void udp_init(char * host, int qs)
 }
 
 
-
 /*
  * udp_second() - run the UDP finite state-machine from teh housekeeping timer
  */
@@ -225,8 +219,6 @@ void udp_second(void)
 {
         switch (state) {
                 case UDP_IDLE:
-                        if (debug)
-                                printf("udp_second(): Initialise UDP sub-system\n");
                         chgstate(UDP_WAIT_LOOKUP);
                         break;
 
@@ -267,6 +259,9 @@ void udp_second(void)
 }
 
 
+/*
+ * udp_close() - shutdown UDP
+ */
 void udp_close(void)
 {
         if (fd) {
@@ -275,4 +270,20 @@ void udp_close(void)
         }
 }
 
-                
+
+/*
+ * udp_reset() - reset the UDP session
+ *
+ * This is called from the SIGHUP handler on some systems that are connected via 4G/LTE
+ * where CGNAT is used by the MNO and their sessions get lost leaving us sending to a
+ * black-hole.
+ *
+ * Cron or CLI can send a SIGHUP and we'll reset the UDP session, getting a new ephemeral
+ * port at our end and hence a new NAT session
+ *
+ */
+void udp_reset(void)
+{
+        reset_connection();
+}
+
