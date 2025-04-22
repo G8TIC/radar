@@ -747,7 +747,7 @@ int main(int argc, char *argv[])
         /*
          * parse command line args
          */
-        while ((rc = getopt(argc, argv, "k:l:r:h:p:u:g:s:t:q:S:P:n:mebBGfvdcyxh?")) >= 0) {
+        while ((rc = getopt(argc, argv, "k:l:r:h:p:u:g:s:t:q:S:P:i:n:mebBGfvdcyxh?")) >= 0) {
                 switch (rc) {
 
                 case 'b':
