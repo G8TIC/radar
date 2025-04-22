@@ -525,7 +525,7 @@ void radar_send_telemetry(void)
 void radar_send_multiframe(void)
 {
         if (num) {
-                uint8_t buf[512];
+                uint8_t buf[1024];
                 uint8_t *bp = buf;
                 uint64_t ts = ustime();
                 int i, sz;
