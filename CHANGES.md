@@ -28,7 +28,7 @@ and bufferes them sending up to 32 messages in a single UDP.
 Multiframe messages are sent when either (a) the buffer is full or (b) the forwarding timeout expires (default 50mS).
 Multiframe increases network efficiency (reduces bandwidth) and the expense of latency.
 Where senders use multiframe they can appear lower in the system's ranking tables because the latency means that their messages arrive later
-behind another station so get considered a duplicate more of the time.
+(behind another station with the same traffic) so get considered a duplicate more of the time.
 Multiframe is considered experimental and defaults to off - to turn it on add "-m" to the OPTIONS in /etc/default/radar
 
 Fixed SIGHUP handler to that UDP sending can be restarted on systems that have CGNAT and/or double NAT without
@@ -39,7 +39,7 @@ Handle EINTR (interrupted system call) correctly when SIGHUP received by the pro
 
 ## Version 2.07-2 22nd April 2025
 Implement UDP rebind interval timer which closes and re-opens the UDP send socket with a new ephemeral port
-numberperiodically to overcome limitations of double/treble (or more) NAT and/or CGNAT used on 4G/5G networks
+number periodically to overcome limitations of double/treble (or more) NAT and/or CGNAT used on 4G/5G networks
 that times out and leaves traffic going down a blackhole.
 New option "-n [seconds]" allows this to be specified over range 0-3600 seconds. Suggested value 295 for networks with aggressive CGNAT at 5
 minutes.
