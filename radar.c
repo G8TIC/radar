@@ -204,6 +204,7 @@ int send_ss = 0;
 int send_ac = 0;
 int multiframe = 0;
 int forward_interval = RADAR_FORWARD_INTERVAL;			/* milliseconds */
+int rebind = 0;
 int everything = 0;
 int stats_interval = STATS_INTERVAL;
 int telemetry_interval = TELEMETRY_INTERVAL;
@@ -693,14 +694,14 @@ static void house_keeping(void)
         if (send_count == 0)
                 radar_send_keepalive();
                         
-        /* Beast housekeeping */
-        beast_second();
-
         /* restart UDP as a result of SIGHUP */
         if (restart) {
                 udp_reset();
                 restart = 0;
         }
+
+        /* Beast housekeeping */
+        beast_second();
 
         /* UDP housekeeping */
         udp_second();
@@ -733,8 +734,7 @@ int main(int argc, char *argv[])
                 { 1, 0 },
                 { 1, 0 }
         };
-
-        
+      
 
         /*
          * catch signals
@@ -747,7 +747,7 @@ int main(int argc, char *argv[])
         /*
          * parse command line args
          */
-        while ((rc = getopt(argc, argv, "k:l:r:h:p:u:g:s:t:q:S:P:mebBGfvdcyxh?")) >= 0) {
+        while ((rc = getopt(argc, argv, "k:l:r:h:p:u:g:s:t:q:S:P:n:mebBGfvdcyxh?")) >= 0) {
                 switch (rc) {
 
                 case 'b':
@@ -856,6 +856,14 @@ int main(int argc, char *argv[])
                         port =(uint16_t)(atoi(optarg));
                         break;
 
+                case 'n':
+                        rebind = atoi(optarg);
+                        if (rebind > 3600 || rebind < 0)
+                                qerror("radar: rebind interval must in in range 0-3600 seconds\n");
+                        if (debug)
+                                printf("radar: rebind interval = %d seconds\n", rebind);
+                        break;
+
                 case 'v':
                         puts(banner());
                         exit(0);
@@ -883,6 +891,7 @@ int main(int argc, char *argv[])
                         printf("  -u <uid|username>  : set the UID or username for the process\n");
                         printf("  -g <gid|group>     : set the GID or group name for the process\n");
                         printf("  -q <qos>           : set the DSCP/IP ToS quality of service\n");
+                        printf("  -n <seconds>       : time before re-binding UDP socket source port (CGNAT work-around)\n");
                         printf("  -v                 : display version information and exit\n");
                         printf("  -x|xx|xxx          : set debug level\n");
                         printf("  -S <serial port>   : specify serial port for Mode-S Beast connection (default: /dev/ttyUSB0)\n");
@@ -985,7 +994,7 @@ int main(int argc, char *argv[])
         /*
          * initialise the UDP sub-system
          */
-        udp_init(hostname, qos);
+        udp_init(hostname, qos, rebind);
 
         /*
          * run in background
@@ -1068,7 +1077,7 @@ int main(int argc, char *argv[])
          */
         do {
                 struct pollfd fds[3];
-                int pnum = 2;
+                int nfds = 2;
         
                 /* watch house-keeping timer */
                 fds[0].fd = timer_fd;
@@ -1082,7 +1091,7 @@ int main(int argc, char *argv[])
                 if (beast_fd) {
                         fds[2].fd = beast_fd;
                         fds[2].events = POLLIN|POLLHUP|POLLERR;
-                        ++pnum;
+                        ++nfds;
                 }
 
                 /*
@@ -1093,7 +1102,8 @@ int main(int argc, char *argv[])
                  *      <0 : an error occurred - consult errno for reason
                  *
                  */
-                rc = poll(fds, pnum, 250);
+again:
+                rc = poll(fds, nfds, 250);
 
                 if (rc > 0) {
                         /*
@@ -1137,7 +1147,14 @@ int main(int argc, char *argv[])
                         /*
                          * poll error
                          */
-                        qerror("poll() error");
+                         
+                        /* if it was 'interupted system call' then it was a signal - carry on */
+                        if (errno == EINTR) {
+                                goto again;
+                        } else {
+                                /* anything else then error exit */
+                                qerror("poll() error: %s (%d)\n", strerror(errno), errno);
+                        }
                 }
 
         } while (!ending);

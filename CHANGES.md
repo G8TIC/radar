@@ -33,3 +33,13 @@ Multiframe is considered experimental and defaults to off - to turn it on add "-
 
 Fixed SIGHUP handler to that UDP sending can be restarted on systems that have CGNAT and/or double NAT without
 error feedback (eg. ICMP port unreachable etc.).
+
+## Version 2.07-1 22nd April 2025
+Handle EINTR (interrupted system call) correctly when SIGHUP received by the process.
+
+## Version 2.07-2 22nd April 2025
+Implement UDP rebind interval timer which closes and re-opens the UDP send socket with a new ephemeral port
+numberperiodically to overcome limitations of double/treble (or more) NAT and/or CGNAT used on 4G/5G networks
+that times out and leaves traffic going down a blackhole.
+New option "-n [seconds]" allows this to be specified over range 0-3600 seconds. Suggested value 295 for networks with aggressive CGNAT at 5
+minutes.

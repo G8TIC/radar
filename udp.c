@@ -49,7 +49,8 @@ static int fd;
 static char hostname[HOSTNAME_LEN+1];
 static int qos;
 static int retry = 0;
-
+static int rebind_interval = 0;
+static int rebind = 0;
 
 /*
  * chgstate() - change state with optional debugging
@@ -202,10 +203,11 @@ void udp_send(void *buf, int size)
 /*
  * udp_init() - initialise the UDP sub-system
  */
-void udp_init(char * host, int qs)
+void udp_init(char * host, int qs, int rb)
 {
         strcpy(hostname, host);
         qos = qs;
+        rebind_interval = rb;
         fd = 0;
         chgstate(UDP_IDLE);
 }
@@ -223,21 +225,15 @@ void udp_second(void)
 
                 case UDP_WAIT_LOOKUP:
                         if (host_lookup())
-                                chgstate(UDP_WAIT_SOCKET);
+                                chgstate(UDP_WAIT_CONNECT);
                         else
                                 reset_connection();
                         break;
 
-                case UDP_WAIT_SOCKET:
-                        if (make_socket()) {
-                                chgstate(UDP_WAIT_CONNECT);
-                        } else {
-                                reset_connection();
-                        }
-                        break;
-
                 case UDP_WAIT_CONNECT:
-                        if (connect_socket()) {
+                        if (make_socket() && connect_socket()) {
+                                if (rebind_interval)
+                                        rebind = rebind_interval;
                                 chgstate(UDP_CONNECTED);
                         } else {
                                 reset_connection();
@@ -245,15 +241,34 @@ void udp_second(void)
                         break;
                 
                 case UDP_CONNECTED:
-                        break;
+                        if (rebind) {
                         
+                                --rebind;
+                        
+                                if (!rebind) {
+
+                                        close(fd);					/* close existing fd */
+                                        
+                                        if (make_socket() && connect_socket()) {	/* make new socket and connect it */
+                                        
+                                                if (rebind_interval)			/* reset interval timer */
+                                                        rebind = rebind_interval;
+                                        
+                                                chgstate(UDP_CONNECTED);		/* un-necessary but useful in debug */
+                                                
+                                        } else {
+                                                reset_connection();
+                                        }
+                                }
+                        }
+                        break;
+
                 case UDP_RETRY_WAIT:
                         if (retry)
                                 --retry;
                         if (!retry)
                                 chgstate(UDP_IDLE);
                         break;
-                        
         }
 }
 
@@ -272,14 +287,6 @@ void udp_close(void)
 
 /*
  * udp_reset() - reset the UDP session
- *
- * This is called from the SIGHUP handler on some systems that are connected via 4G/LTE
- * where CGNAT is used by the MNO and their sessions get lost leaving us sending to a
- * black-hole.
- *
- * Cron or CLI can send a SIGHUP and we'll reset the UDP session, getting a new ephemeral
- * port at our end and hence a new NAT session
- *
  */
 void udp_reset(void)
 {
