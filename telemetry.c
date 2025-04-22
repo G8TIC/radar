@@ -8,25 +8,31 @@
  * Collect and report information about the operating system, environment and
  * operation of the radar software to better understand system performance and
  * determine bugs or failure modes with our software, in line with our policy
- * of continued improvement but while remaining 
+ * of continued improvement but while remaining respectful of user privacy.
  *
  *
  * WHAT WE COLLECT
  *
- * We collect functional and operational information about the receriver system
- * and its environment such as the kernel version, the version og GCC used to
- * compile the software, the status of system memory, processor family, CPU
- * temperature and load averages.
+ * We collect functional and operational information about the computer system
+ * running the radar feeder sofwtare  and its environment such as the kernel
+ * version, the version og GCC used to compile the software, the status of system
+ * memory, processor family, CPU temperature and load averages.
+ *
+ * We collect only that for which we have 'legitimate interest' in making the
+ * radar forwarding sofwtare and out ADS-B service better.
  *
  * Please refer to the data structure in telemetry.h for full details.
+ *
+ *
  * PRIVACY CONCERNS
  *
  * We do not collect any Personally Identifiable Information (PII) or information
  * about your network - for example we do not collect:
  *
- *	any IP addresses or details of other computers
- *	usernames or passwords
- *	documents, files, photos
+ *	Other IP addresses on your network
+ *	Details of other computers
+ *	Usernames or passwords
+ *	Documents, files, photos
  *
  * or any information or data that does not concern us.
  *
@@ -48,7 +54,6 @@
 #include "version.h"
 #include "radar.h"
 #include "beast.h"
-#include "avr.h"
 #include "arch.h"
 #include "telemetry.h"
 
@@ -272,3 +277,4 @@ void telemetry_close(void)
 {
         fclose(tempf);
 }
+

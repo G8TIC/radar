@@ -57,7 +57,7 @@ static int retry = 0;
 static void chgstate(enum udpstate newstate)
 {
         if (debug)
-                printf("chgstate(): %d -> %d\n", state, newstate);
+                printf("udp chgstate(): %d -> %d\n", state, newstate);
                 
         state = newstate;
 }
@@ -143,7 +143,6 @@ static int make_socket(void)
         dst.sin_family = AF_INET;
         dst.sin_addr = *(struct in_addr*) hostinfo->h_addr;
         dst.sin_port = htons(UDP_PORT);
-
 
         return 1;
 }

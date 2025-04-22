@@ -15,8 +15,9 @@ UNIT_DIR=/etc/systemd/system
 TARGET=./$(BIN)
 
 #CFLAGS=-Wall -Werror -Wno-error=unused-but-set-variable -std=gnu11 -g -O -I../include -DBASENAME=\"${BASENAME}\" -DPID_FILE=\"${PID_FILE}\"
-CFLAGS=-Wall -Werror -std=gnu11 -g -O -I../include -DBASENAME=\"${BASENAME}\" -DPID_FILE=\"${PID_FILE}\"
-OBJ=radar.o banner.o avr.o beast.o beast_tcp.o beast_serial.o udp.o dupe.o hex.o mstime.o ustime.o sha256.o sha512.o hmac-sha256.o authtag.o stats.o telemetry.o arch.o xtimer.o qerror.o
+#CFLAGS=-Wall -Werror -std=gnu11 -g -O -I../include -DBASENAME=\"${BASENAME}\" -DPID_FILE=\"${PID_FILE}\"
+CFLAGS=-Wall -Werror -std=gnu11 -g -O2 -I../include -DBASENAME=\"${BASENAME}\" -DPID_FILE=\"${PID_FILE}\"
+OBJ=radar.o banner.o beast.o udp.o dupe.o hex.o mstime.o ustime.o sha256.o sha512.o hmac-sha256.o authtag.o stats.o telemetry.o arch.o qerror.o
 
 DEPDIR := .d
 $(shell mkdir -p $(DEPDIR) >/dev/null)

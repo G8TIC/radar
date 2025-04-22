@@ -114,9 +114,8 @@
  *	-k <key>	  sharing key for your station
  *	-h <hostname>	  destination hostname for aggregator, defaults to adsb-in.1090mhz.uk
  *      -p <pass-phrase>  pre-shared key for message authentication, defaults to "secret"
- *	-a                force use of legacy AVR protocol otherwise we use BEAST
  *	-r <ipaddr>	  address of device that provides ADS-B source if not localhost
- *	-e <level>        set the level of Extended Squitter sent
+ *	-e                forward everything (Mode-A/C, Mode-S, and all Extended Squitter)
  *	-u <user>	  user name to run under, e.g. 'nobody'
  *	-g <group>	  group name to run under, e.g. 'nogroup'
  *	-q <qos>	  IP Quality of Service using DiffServe values 0-63
@@ -125,6 +124,8 @@
  *	-f		  produce forwarding stats one per second (foreground only)
  *	-s <seconds>	  send radio channel stats every period (default 900 = 15 min)
  *	-t <seconds>	  send system telemetry every period (default 900 = 15 min)
+ *	-m		  enable multiframe sending (more efficient but adds latency)
+ *	-i <ms>           multiframe forwaring interval/timeout (milliseconds)
  *	-v		  print version number and exit
  *
  * but normally runs as a service.
@@ -135,7 +136,7 @@
  * As an absolute minimum you need an API/Skaring Key - these are 64-bit random numbers
  * that identify your radar station to us but mean nothing to anyone else.
  *
- * Sharing keys are represented as 16 hex nibbles in uppercase with the leacing 0x - for
+ * Sharing keys are represented as 16 hex nibbles in uppercase with the leading 0x - for
  * example:
  *
  *                        0x79441BC23EDA3F17
@@ -147,7 +148,7 @@
  * from corruption, forgery and replay attacks.
  *
  * If both parties set a pre-shared key/pass-phrase then the aggregator can authenticate
- * the originator and we know the message cannot have been* spoofed either.
+ * the originator and we know the message cannot have been spoofed.
  *
  * The system defaults to using the pass-phrase "secret" - please contact us to set a better
  * one - we usually generate pass phrases at random.org
@@ -171,14 +172,13 @@
 #include <linux/socket.h>
 #include <linux/ip.h>
 #include <termios.h>
+#include <sys/timerfd.h>
+#include <sys/poll.h>
 
 #include "radar.h"
 #include "banner.h"
-#include "xtimer.h"
-#include "avr.h"
+#include "version.h"
 #include "beast.h"
-#include "beast_tcp.h"
-#include "beast_serial.h"
 #include "udp.h"
 #include "dupe.h"
 #include "authtag.h"
@@ -186,8 +186,6 @@
 #include "mstime.h"
 #include "hex.h"
 #include "qerror.h"
-
-#define TIMER_INTERVAL		1000L				/* 1 second */
 
 
 /*
@@ -200,17 +198,20 @@ int dosyslog = 0;
 int dologfile = 0;
 int dostats = 0;
 int debug = 0;
+int restart = 0;
 int gotkey = 0;
-int send_es = 2;						/* Send DF17, 18, 19, 20 and 21 by default */
 int send_ss = 0;
 int send_ac = 0;
+int multiframe = 0;
+int forward_interval = RADAR_FORWARD_INTERVAL;			/* milliseconds */
+int everything = 0;
 int stats_interval = STATS_INTERVAL;
 int telemetry_interval = TELEMETRY_INTERVAL;
-xtimer_t timer;
 uint64_t key;
 char hostname[HOSTNAME_LEN+1] = UDP_HOST;
 char psk[PSK_LEN+1] = "secret";
 char localaddress[HOSTNAME_LEN+1] = "127.0.0.1";
+uint16_t port = BEAST_TCP_PORT;
 uint32_t seq = 1;
 char username[USERNAME_LEN+1] = "nobody";
 char groupname[GROUPNAME_LEN+1] = "nogroup";
@@ -221,6 +222,17 @@ uint32_t dupe_es_count = 0;
 uint32_t send_count = 0;
 uint32_t byte_count = 0;
 char serport[BEAST_SERIAL_PORT_NAME+1] = "/dev/ttyUSB0";
+int num;
+
+
+typedef struct {
+        uint8_t mlat[MLAT_LEN];					/* Multi-lateration timestamp */
+        uint8_t rssi;        					/* Received signal strength indication */
+        uint8_t data[MODE_ES_LEN];				/* data */
+} esdata_t;
+
+
+esdata_t esdata[RADAR_MAX_MULTIFRAME];
 
 
 /*
@@ -228,21 +240,8 @@ char serport[BEAST_SERIAL_PORT_NAME+1] = "/dev/ttyUSB0";
  */
 void cleanup(void)
 {
-        /* close connection */
-        switch (protocol) {
-                case RADAR_PROTOCOL_BEAST_TCP:
-                        beast_tcp_close();
-                        break;
-                
-                case RADAR_PROTOCOL_AVR:
-                        avr_close();
-                        break;
-                        
-                case RADAR_PROTOCOL_BEAST_SERIAL:
-                case RADAR_PROTOCOL_GNS_SERIAL:
-                        beast_serial_close();
-                        break;
-        }
+        /* close beast connection */
+        beast_close();
 
         /* close down UDP */
         udp_close();
@@ -259,7 +258,7 @@ void signal_handler(int signal)
 
         switch (signal) {
                 case SIGHUP:
-                        udp_reset();
+                        ++restart;
                         break;
 
                 case SIGTERM:
@@ -308,6 +307,16 @@ gid_t get_gid(const char * group)
         }
 
         return (grp) ? grp->gr_gid : (gid_t)0;
+}
+
+
+/*
+ * clear_buffer() - clear the multi-frame buffer
+ */
+static void clear_buffer(void)
+{
+        memset(&esdata, 0, sizeof(esdata));
+        num = 0;
 }
 
 
@@ -373,6 +382,7 @@ static void send_mode_ss(radar_mode_ss_t *bp)
         }
 }
 
+
 /*
  * send_mode_es() - Send a Mode-S Extended Squitter to the aggregator
  */
@@ -386,7 +396,6 @@ static void send_mode_es(radar_mode_es_t *bp)
 
                 /* add auth tag */
                 authtag_sign(bp->atag, AUTHTAG_LEN, bp, sizeof(radar_mode_es_t) - AUTHTAG_LEN);
-
 #if 0
                 /*
                  * interference monkey - brake random bits on random occasions to check auth tag works ...
@@ -403,7 +412,6 @@ static void send_mode_es(radar_mode_es_t *bp)
                         printf("send_mode_es(): corrupted byte=%d bit=%d\n", byte, bit);
                 }
 #endif
-                
                 /* send to aggregator */
                 udp_send(bp, sizeof(radar_mode_es_t));
 
@@ -432,7 +440,10 @@ void radar_send_keepalive(void)
         msg.seq = seq++;
         msg.opcode = RADAR_OPCODE_KEEPALIVE;
         
-        memcpy(msg.data, "HELLO", 5);
+        /* software version number */
+        msg.ver_hi = VERSION_MAJOR;
+        msg.ver_lo = VERSION_MINOR;
+        msg.patch = VERSION_PATCH;
         
         /* add auth tag */
         authtag_sign(&msg.atag[0], AUTHTAG_LEN, &msg, sizeof(radar_keepalive_t) - AUTHTAG_LEN);
@@ -497,7 +508,7 @@ void radar_send_telemetry(void)
         udp_send(&msg, sizeof(radar_telemetry_t));
 
         /* stats for aggregator */
-        ++stats.tx_stats;
+        ++stats.tx_telemetry;
         ++stats.tx_count;
         stats.tx_bytes += sizeof(radar_telemetry_t);
                 
@@ -508,57 +519,115 @@ void radar_send_telemetry(void)
 
 
 /*
- * radar_process() - process a radar message from AVR or BEAST input
+ * radar_send_multiframe() - send several Extended Squitter frames in a single UDP/IP message for improved efficiency
+ */
+void radar_send_multiframe(void)
+{
+        if (num) {
+                uint8_t buf[512];
+                uint8_t *bp = buf;
+                uint64_t ts = ustime();
+                int i, sz;
+
+                if (debug)
+                        printf("radar_send_multiframe(): num=%d\n", num);
+
+                memset(&buf, 0, sizeof(buf));
+        
+                memcpy(bp, &key, sizeof(key));				/* API key */
+                bp += sizeof(key);
+                
+                memcpy(bp, &ts, sizeof(ts));				/* time stamp */
+                bp += sizeof(ts);
+                
+                memcpy(bp, &seq, sizeof(seq));				/* sequence number */
+                bp += sizeof(seq);
+                seq++;
+                
+                *bp++ = RADAR_OPCODE_MULTIFRAME;			/* opcode */
+
+                *bp++ = (uint8_t)num;					/* item count */
+                
+                for (i=0; i<num; ++i) {					/* copy ES messages to buffer */
+                        memcpy(bp, &esdata[i].mlat, MLAT_LEN);
+                        bp += MLAT_LEN;
+                        
+                        *bp++ = esdata[i].rssi;
+                        
+                        memcpy(bp, &esdata[i].data, MODE_ES_LEN);
+                        bp += MODE_ES_LEN;
+                }
+
+                /* size to be signed/auth tagged */
+                sz = bp - buf;
+
+                /* add auth tag */
+                authtag_sign(bp, AUTHTAG_LEN, &buf, sz);
+                
+                /* bump size to include the auth tag */
+                sz += AUTHTAG_LEN;
+
+                /* send to aggregator */
+                udp_send(&buf, sz);
+
+                /* stats for aggregator */
+                ++stats.tx_mode_multi;
+                ++stats.tx_count;
+                stats.tx_bytes += sz;
+                
+                /* local stats */
+                ++send_count;
+                byte_count += sz;
+
+                /* reset buffer */
+                clear_buffer();
+        }
+}
+
+
+/*
+ * radar_process() - process a radar message from BEAST input
  */
 void radar_process(uint8_t mlat[MLAT_LEN], uint8_t rssi, uint8_t *data, int len)
 {
         if (len == MODE_ES_LEN) {						/* Mode-S Extended message (14 bytes) */
                 uint8_t df = data[0] >> 3;					/* downlink format */
 
-                //printf("radar_process(): df=%d size=%d\n", df, len);
-
-                /*
-                 * forward of downlink formats set by the -e <level> option on the command line
-                 *
-                 * Level-0 -> Send nothing
-                 *
-                 * Level-1 (default) -> Send DF17, DF18, DF19:
-                 *
-                 *    DF17:    Extended Squitter
-                 *    DF18:    Extended Squitter, Supplementary
-                 *    DF19:    Military Extended Squitter
-                 *
-                 * Level-2 -> Send DF17, DF18, DF19 *plus* DF20, DF21, DF22 :
-                 *
-                 *    DF20/21: Comm. B Altitude and Ident Reply
-                 *    DF22:    Military use (undefined)
-                 *
-                 * Level-3 -> Send DF17-19, DF20-22 *plus* DF16
-                 *
-                 * Level-4 -> Send everything (all Extended Squitter, current and future)
-                 *
-                 */                 
-                if ( (send_es >= 1 && (df >= 17 && df <= 19)) || (send_es >= 2 && (df >= 20 && df <= 22)) || (send_es >= 3 && df == 16) || (send_es >= 4) ){
+                if ( (df >= 17 && df <= 22) || everything ){
                         int dupe;
                         
-                        dupe = dupe_check_es(data);
+                        dupe = dupe_check_es(data);				/* duplicate check */
                         
                         if (dupe) {
-                                if (debug > 2)
-                                        printf("radar_process(): not sending duplicate ES\n");
-
                                 ++dupe_es_count;
                                 ++stats.dupe_es;
                                 ++stats.dupes;
 
                         } else {
-                                radar_mode_es_t buf;
+                        
+                                if (multiframe) {
+                                        /* 
+                                         * in multiframe mode we store ES data here and send when we have either
+                                         * reached the buffer limit or the multiframe forwarding timeout
+                                         */
+                                        memcpy(&esdata[num].mlat, mlat, MLAT_LEN);
+                                        esdata[num].rssi = rssi;
+                                        memcpy(&esdata[num].data, data, MODE_ES_LEN);
+                                        
+                                        ++num;
 
-                                memcpy(buf.mlat, mlat, MLAT_LEN);		/* copy over MLAT */
-                                buf.rssi = rssi;				/* copy RSSI */
-                                memcpy(buf.data, data, MODE_ES_LEN);		/* extended squitter */
-                                
-                                send_mode_es(&buf);
+                                        if (num >= RADAR_MAX_MULTIFRAME)	/* buffer full? send now */
+                                                radar_send_multiframe();
+                                                
+                                } else {
+                                        radar_mode_es_t buf;
+
+                                        memcpy(buf.mlat, mlat, MLAT_LEN);
+                                        buf.rssi = rssi;
+                                        memcpy(buf.data, data, MODE_ES_LEN);
+
+                                        send_mode_es(&buf);
+                                }
                         }
                 }
                 
@@ -602,7 +671,7 @@ void radar_process(uint8_t mlat[MLAT_LEN], uint8_t rssi, uint8_t *data, int len)
 
                         memcpy(buf.mlat, mlat, MLAT_LEN);			/* copy over MLAT */
                         buf.rssi = rssi;					/* copy RSSI */
-                        memcpy(buf.data, data, MODE_AC_LEN);		/* Mode-A/C short */
+                        memcpy(buf.data, data, MODE_AC_LEN);			/* Mode-A/C short */
                          
                         send_mode_ac(&buf);
                 }
@@ -613,28 +682,73 @@ void radar_process(uint8_t mlat[MLAT_LEN], uint8_t rssi, uint8_t *data, int len)
 
 
 /*
+ * house_keeping() - called once per second from a timer
+ */
+static void house_keeping(void)
+{
+        /* clean duplicates */
+        dupe_clean();
+                        
+        /* if we've sent no packets in the last second, send a keep alive */
+        if (send_count == 0)
+                radar_send_keepalive();
+                        
+        /* Beast housekeeping */
+        beast_second();
+
+        /* restart UDP as a result of SIGHUP */
+        if (restart) {
+                udp_reset();
+                restart = 0;
+        }
+
+        /* UDP housekeeping */
+        udp_second();
+
+        /* foreground stats */
+        if (dostats) {
+                printf("Packets forwarded: %3u   Not forwarded (dupes): %3u  Bytes per second: %5u\n", send_count, dupe_ss_count+dupe_es_count, byte_count);
+        }
+
+        /* clear the per-second stats */                                
+        send_count = dupe_ss_count = dupe_es_count = byte_count = 0;
+                                
+        /* do radio stats and device telemetry */
+        stats_second();
+        telemetry_second();
+}
+
+
+/*
  * main program
  */
 int main(int argc, char *argv[])
 {
         int rc;
+        int timer_fd = 0;
+        int forward_fd = 0;
+        uint8_t dummybuf[8];
+
+        struct itimerspec spec_second = {		/* 1 second timer for housekeeping */
+                { 1, 0 },
+                { 1, 0 }
+        };
+
+        
 
         /*
          * catch signals
          */
-        signal(SIGINT,  signal_handler);
+        signal(SIGINT, signal_handler);
         signal(SIGTERM, signal_handler);
         signal(SIGHUP, signal_handler);
 
+        
         /*
          * parse command line args
          */
-        while ((rc = getopt(argc, argv, "k:l:r:h:p:u:g:s:t:q:e:S:abBGfvdcyxh?")) >= 0) {
+        while ((rc = getopt(argc, argv, "k:l:r:h:p:u:g:s:t:q:S:P:mebBGfvdcyxh?")) >= 0) {
                 switch (rc) {
-
-                case 'a':
-                        protocol = RADAR_PROTOCOL_AVR;
-                        break;
 
                 case 'b':
                         protocol = RADAR_PROTOCOL_BEAST_TCP;                
@@ -691,9 +805,17 @@ int main(int argc, char *argv[])
                         break;
 
                 case 'e':
-                        send_es = atoi(optarg);
-                        if (send_es >= 5 || qos < 0)
-                                qerror("radar: Mode-S Extended Squitter level out of range (valid: 0-5)\n");
+                        ++everything;
+                        break;
+
+                case 'm':
+                        ++multiframe;
+                        break;
+
+                case 'i':
+                        forward_interval = atoi(optarg);
+                        if (forward_interval < 10 || forward_interval > 250)
+                                qerror("radar: multiframe forwarding interval must be in range 10-250mS\n");
                         break;
 
                 case 't':
@@ -730,6 +852,10 @@ int main(int argc, char *argv[])
                         debug++;
                         break;
 
+                case 'P':
+                        port =(uint16_t)(atoi(optarg));
+                        break;
+
                 case 'v':
                         puts(banner());
                         exit(0);
@@ -741,14 +867,15 @@ int main(int argc, char *argv[])
                         printf("  -k <key>           : sharing key (identity) of this receiver station\n");
                         printf("  -h <hostname>      : hostname of central aggregator\n");
                         printf("  -p <psk>           : pre-shared key for HMAC authentication (signing of messages)\n");
-                        printf("  -a                 : use AVR protocol rather than BEAST\n");
-                        printf("  -b                 : use BEAST protocol\n");
                         printf("  -B                 : use Mode-S BEAST via USB connection\n");
                         printf("  -G                 : use GNS 5892/5894T HULC via serial connection\n");
                         printf("  -c                 : enable sending Mode-A/C message (not recommended)\n");
                         printf("  -y                 : enable sending Mode-S Short messages (not recommended)\n");
-                        printf("  -e <level>         : control which Mode-S Extended Squitter DF codes are sent (default = 1)\n");
+                        printf("  -e                 : forward everything\n");
                         printf("  -l <ip addr>       : IP address of local dump1090/readsb server (default: 127.0.0.1)\n");
+                        printf("  -P <port>          : TCP port number to connect to Beast on (default: 30005)\n");
+                        printf("  -m                 : Enable multiframe sending (more efficient but more latency)\n");
+                        printf("  -i <ms>            : Forwarding interval in milliseconds for multiframe (range 10-250, default 50)\n");
                         printf("  -s <seconds>       : Set the radio stats interval (default 900)\n");
                         printf("  -t <seconds>       : Set the telemetry interval (default 900)\n");
                         printf("  -d                 : run as daemon (detach from controlling tty)\n");
@@ -758,7 +885,6 @@ int main(int argc, char *argv[])
                         printf("  -q <qos>           : set the DSCP/IP ToS quality of service\n");
                         printf("  -v                 : display version information and exit\n");
                         printf("  -x|xx|xxx          : set debug level\n");
-                        printf("  -B                 : set protocol to Beast over serial (for Mode-S BEAST receiver)\n");
                         printf("  -S <serial port>   : specify serial port for Mode-S Beast connection (default: /dev/ttyUSB0)\n");
                         printf("  -?                 : help (this output)\n");
                         printf("\n");
@@ -783,9 +909,6 @@ int main(int argc, char *argv[])
         
         if (isdaemon && dostats)
                 qerror("radar: cannot output stats in background\n");
-
-        if (send_es == 0)
-                printf("Warning: Sending Mode-S Extended Squitter is suppressed - are you sure?\n");
 
         
         /*
@@ -849,7 +972,7 @@ int main(int argc, char *argv[])
         }
 
         /*
-         * initialise stats gathering (must do before starting AVR or BEAST)
+         * initialise stats gathering (must do before starting beast connection)
          */
         stats_init(stats_interval);
         telemetry_init(telemetry_interval);
@@ -859,12 +982,10 @@ int main(int argc, char *argv[])
          */
         authtag_init(psk);
 
-
         /*
          * initialise the UDP sub-system
          */
         udp_init(hostname, qos);
-        
 
         /*
          * run in background
@@ -881,17 +1002,11 @@ int main(int argc, char *argv[])
         switch (protocol) {
 
                 case RADAR_PROTOCOL_BEAST_TCP:
-                        beast_tcp_init(localaddress);
+                        beast_tcp_init(localaddress, port);
                         if (dostats)
                                 printf("Using BEAST over TCP on %s:%d (preferred)\n", localaddress, BEAST_TCP_PORT);
                         break;
                 
-                case RADAR_PROTOCOL_AVR:
-                        avr_init(localaddress);
-                        if (dostats)
-                                printf("Using AVR protocol on %s:%d (fallback)\n", localaddress, AVR_PORT);
-                        break;
-                        
                 case RADAR_PROTOCOL_BEAST_SERIAL:
                         beast_serial_init(serport, B3000000);
                         if (dostats)
@@ -912,75 +1027,117 @@ int main(int argc, char *argv[])
         /*
          * start the housekeeping timer
          */
-        xtimer_start(&timer, TIMER_INTERVAL);
+        timer_fd = timerfd_create(CLOCK_REALTIME,  0);
+
+        if (!timer_fd)
+                qerror("unable to create timer!");
+
+        timerfd_settime(timer_fd, 0, &spec_second, NULL);
+
+
+        /*
+         * if using multiframe clear the buffer and start the forwarding timer
+         */
+        if (multiframe) {
+#if 0
+                struct itimerspec spec_forward = {		/* radar multi-frame forwarding intervl */
+                        { 0, RADAR_FORWARD_INTERVAL },
+                        { 0, RADAR_FORWARD_INTERVAL }
+                };
+#endif
+                struct itimerspec spec_forward;
+                long nsec = forward_interval * 1000000;
+
+                spec_forward.it_interval.tv_sec = 0;
+                spec_forward.it_interval.tv_nsec = nsec;
+                spec_forward.it_value.tv_sec = 0;
+                spec_forward.it_value.tv_nsec = nsec;
+
+                forward_fd = timerfd_create(CLOCK_REALTIME,  0);
+
+                if (!forward_fd)
+                        qerror("unable to create timer!");
+
+                timerfd_settime(forward_fd, 0, &spec_forward, NULL);
+
+                clear_buffer();
+        }
 
         /*
          * forward traffic ...
          */
         do {
-                switch (protocol) {
+                struct pollfd fds[3];
+                int pnum = 2;
+        
+                /* watch house-keeping timer */
+                fds[0].fd = timer_fd;
+                fds[0].events = POLLIN;
 
-                        case RADAR_PROTOCOL_BEAST_TCP:
-                                beast_tcp_run();
-                                break;
-                
-                        case RADAR_PROTOCOL_AVR:
-                                avr_run();
-                                break;
-                        
-                        case RADAR_PROTOCOL_BEAST_SERIAL:
-                        case RADAR_PROTOCOL_GNS_SERIAL:
-                                beast_serial_run();
-                                break;
-                }        
+                /* watch forwarding timer */
+                fds[1].fd = forward_fd;
+                fds[1].events = (multiframe) ? POLLIN : 0;
 
+                /* watch for input, hangups and errors from Beast connection, if active */
+                if (beast_fd) {
+                        fds[2].fd = beast_fd;
+                        fds[2].events = POLLIN|POLLHUP|POLLERR;
+                        ++pnum;
+                }
 
-                if (xtimer_expired(&timer)) {			/* 1 second house keepingtimer */
+                /*
+                 * perform poll() for IO status and decode result:
+                 *
+                 *      >0 : one or more file descriptors has an event
+                 *       0 : timeout waiting for event
+                 *      <0 : an error occurred - consult errno for reason
+                 *
+                 */
+                rc = poll(fds, pnum, 250);
 
-                        /* clean duplicates */
-                        dupe_clean();
-                        
-                        /* if we've sent no packets in the last second, send a keep alive */
-                        if (send_count == 0)
-                                radar_send_keepalive();
-                        
-                        /* do approprioate housekeeping */
-                        switch (protocol) {
-                                case RADAR_PROTOCOL_BEAST_TCP:
-                                        beast_tcp_second();
-                                        beast_second();
-                                        break;
-                                
-                                case RADAR_PROTOCOL_BEAST_SERIAL:
-                                        beast_second();
-                                        break;
-                                
-                                case RADAR_PROTOCOL_GNS_SERIAL:
-                                        beast_second();
-                                        break;
-                
-                                case RADAR_PROTOCOL_AVR:
-                                        avr_second();
-                                        break;
-                        }        
-
-                        /* UDP housekeeping */
-                        udp_second();
-
-                        /* foreground stats */
-                        if (dostats) {
-                                printf("Packets forwarded: %3u   Not forwarded (dupes): %3u  Bytes per second: %5u\n", send_count, dupe_ss_count+dupe_es_count, byte_count);
+                if (rc > 0) {
+                        /*
+                         * poll() input available
+                         */
+                         
+                        /* check house-keeping timer */
+                        if (fds[0].revents & POLLIN) {
+                                read(timer_fd, dummybuf, 8);
+                                house_keeping();
                         }
 
-                        /* clear the per-second stats */                                
-                        send_count = dupe_ss_count = dupe_es_count = byte_count = 0;
+                        /* check fast forwarding timer (for multframe) */
+                        if (multiframe && (fds[1].revents & POLLIN)) {
+                                read(forward_fd, dummybuf, 8);
                                 
-                        /* do radio stats and device telemetry */
-                        stats_second();
-                        telemetry_second();
+                                if (num)
+                                        radar_send_multiframe();
+                        }
 
-                        /* restart the timer */
-                        xtimer_start(&timer, TIMER_INTERVAL);
+                        /* check for beast data available and errors */
+                        if (beast_fd) {
+                                if (fds[2].revents & POLLIN) {
+                                        beast_read();
+                                } else if (fds[2].revents & POLLHUP || fds[2].revents & POLLERR) {
+                                        beast_reset_connection();
+                                }
+                        }
+
+                } else if (rc == 0) {
+                        /*
+                         * poll() timed out … nothing to do
+                         */
+#if 0
+                        if (debug)
+                                printf("Poll() timeout\n");
+#endif
+                        ;
+
+                } else {
+                        /*
+                         * poll error
+                         */
+                        qerror("poll() error");
                 }
 
         } while (!ending);
@@ -991,3 +1148,4 @@ int main(int argc, char *argv[])
         cleanup();
         exit(EXIT_SUCCESS);
 }
+

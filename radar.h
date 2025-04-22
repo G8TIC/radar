@@ -19,20 +19,39 @@
 
 #define RADAR_PROTOCOL_NONE			0
 #define RADAR_PROTOCOL_BEAST_TCP		1
-#define RADAR_PROTOCOL_AVR			2
-#define RADAR_PROTOCOL_BEAST_SERIAL		3
-#define RADAR_PROTOCOL_GNS_SERIAL		4
+#define RADAR_PROTOCOL_BEAST_SERIAL		2
+#define RADAR_PROTOCOL_GNS_SERIAL		3
 
 #define RADAR_OPCODE_RESERVED			0x00
 #define RADAR_OPCODE_MODE_AC			0x01
 #define RADAR_OPCODE_MODE_S			0x02
 #define RADAR_OPCODE_MODE_ES			0x03
-#define RADAR_OPCODE_MODE_ES_MULTIFRAME		0x20
+#define RADAR_OPCODE_MULTIFRAME			0x04
 #define RADAR_OPCODE_KEEPALIVE			0x80
 #define RADAR_OPCODE_SYSTEM_TELEMETRY		0x81
 #define RADAR_OPCODE_RADIO_STATS		0x82
 #define RADAR_OPCODE_CONFIG_REQ			0xC1
 #define RADAR_OPCODE_CONGIG_ACK			0xC2
+
+#define RADAR_MAX_MULTIFRAME			32
+#define RADAR_FORWARD_INTERVAL			50			/* milliseconds */
+
+
+/*
+ * some useful macros
+ */
+#ifndef min
+#define min(a,b) (((a)<(b)) ? (a) : (b))
+#endif
+
+#ifndef max
+#define max(a,b) (((a)>(b)) ? (a) : (b))
+#endif
+
+#ifndef pow2
+#define pow2(a) (a*a)
+#endif
+
 
 
 extern int protocol;
@@ -111,7 +130,9 @@ typedef struct {
         uint64_t ts;                            /* Timestamp (uS) */
         uint32_t seq;                           /* Message sequence number */
         uint8_t opcode;				/* Opcode: message type */
-        uint8_t data[10];
+        uint8_t ver_hi;
+        uint8_t ver_lo;
+        uint8_t patch;
         uint8_t atag[AUTHTAG_LEN];		/* Authentication tag */
 } __attribute__((packed)) radar_keepalive_t;
 
@@ -140,6 +161,30 @@ typedef struct {
         telemetry_t telemetry;			/* Receiver platform telemetry */
         uint8_t atag[AUTHTAG_LEN];		/* Authentication tag */
 } __attribute__((packed)) radar_telemetry_t;
+
+
+/*
+ * es_msg_t type - one extended squitter sub-message - 21 bytes
+ */
+typedef struct {
+        uint8_t mlat[MLAT_LEN];			/* Multi-lateration timestamp */
+        uint8_t rssi;        			/* Received signal strength indication */
+        uint8_t data[MODE_ES_LEN];		/* data */
+} __attribute__((packed)) es_t;
+
+
+/*
+ * radar message type: Mode-S Extended Squitter (14 bytes)
+ */
+typedef struct {
+        uint64_t key;                           /* API key for this radar station */
+        uint64_t ts;                            /* Message timestamp (uS) */
+        uint32_t seq;                           /* Message sequence number */
+        uint8_t opcode;				/* Opcode: message type */
+        uint8_t num;
+        es_t es[RADAR_MAX_MULTIFRAME];
+        uint8_t atag[AUTHTAG_LEN];		/* Authentication tag */
+} __attribute__((packed)) radar_multiframe_t;
 
 
 /*

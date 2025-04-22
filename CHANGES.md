@@ -18,3 +18,18 @@ doesn't get generated or doesn't get back to user-space still leaving the UDP se
 
 Added a SIGHUP handler and udp_reset() so that the CLI or a cron job can reset the UDP
 state-machine and re-start the UDP sender periodically.
+
+## Version 2.06-0 20th April 2025
+Internal testing only.
+
+## Version 2.07-0 22nd April 2025
+Implement multiframe support.  Multiframe gathers Mode-S Extended Squitter, MLAT and RSSI
+and bufferes them sending up to 32 messages in a single UDP.
+Multiframe messages are sent when either (a) the buffer is full or (b) the forwarding timeout expires (default 50mS).
+Multiframe increases network efficiency (reduces bandwidth) and the expense of latency.
+Where senders use multiframe they can appear lower in the system's ranking tables because the latency means that their messages arrive later
+behind another station so get considered a duplicate more of the time.
+Multiframe is considered experimental and defaults to off - to turn it on add "-m" to the OPTIONS in /etc/default/radar
+
+Fixed SIGHUP handler to that UDP sending can be restarted on systems that have CGNAT and/or double NAT without
+error feedback (eg. ICMP port unreachable etc.).
