@@ -43,3 +43,4 @@ number periodically to overcome limitations of double/treble (or more) NAT and/o
 that times out and leaves traffic going down a blackhole.
 New option "-n [seconds]" allows this to be specified over range 0-3600 seconds. Suggested value 295 for networks with aggressive CGNAT at 5
 minutes.
+Increase multiframe transccription buffer to 1024 bytes to avoid SEGV.
