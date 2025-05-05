@@ -1078,6 +1078,7 @@ int main(int argc, char *argv[])
         do {
                 struct pollfd fds[3];
                 int nfds = 2;
+                int rc;
         
                 /* watch house-keeping timer */
                 fds[0].fd = timer_fd;
@@ -1112,13 +1113,15 @@ again:
                          
                         /* check house-keeping timer */
                         if (fds[0].revents & POLLIN) {
-                                read(timer_fd, dummybuf, 8);
+                                rc = read(timer_fd, dummybuf, 8);
+                                rc = rc;
                                 house_keeping();
                         }
 
                         /* check fast forwarding timer (for multframe) */
                         if (multiframe && (fds[1].revents & POLLIN)) {
-                                read(forward_fd, dummybuf, 8);
+                                rc = read(forward_fd, dummybuf, 8);
+                                rc = rc;
                                 
                                 if (num)
                                         radar_send_multiframe();
