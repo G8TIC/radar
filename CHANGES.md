@@ -46,3 +46,18 @@ New option "-n [seconds]" allows this to be specified over range 0-3600 seconds.
 minutes.
 
 Increase multiframe transcription buffer to 1024 bytes to accomodate larger messages.
+
+## Version 2.07-3 5th May 2025
+Fix compile uner Ubuntu where "warn unused result" is being checked even
+when not specificied.
+
+adar.c: In function ‘main’:
+radar.c:1115:33: error: ignoring return value of ‘read’, declared with attribute warn_unused_result [-Werror=unused-result]
+ 1115 |                                 read(timer_fd, dummybuf, 8);
+      | ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+radar.c:1121:33: error: ignoring return value of ‘read’, declared with attribute warn_unused_result [-Werror=unused-result]
+ 1121 |                                 read(forward_fd, dummybuf, 8);
+      | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cc1: all warnings being treated as errors
+make: *** [Makefile:69 : radar.o] Erreur 1
+
