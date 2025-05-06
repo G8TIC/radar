@@ -1114,17 +1114,28 @@ again:
                         /* check house-keeping timer */
                         if (fds[0].revents & POLLIN) {
                                 rc = read(timer_fd, dummybuf, 8);
-                                rc = rc;
-                                house_keeping();
+                                
+                                if (rc > 0) {
+                                        house_keeping();
+                                } else {
+                                        /* should not get here */
+                                        ;
+                                }
                         }
 
                         /* check fast forwarding timer (for multframe) */
                         if (multiframe && (fds[1].revents & POLLIN)) {
                                 rc = read(forward_fd, dummybuf, 8);
-                                rc = rc;
+
+                                if (rc > 0) {
                                 
-                                if (num)
-                                        radar_send_multiframe();
+                                        /* if we have outstanding frames then send them */
+                                        if (num)
+                                                radar_send_multiframe();
+                                } else {
+                                        /* should not get here */
+                                        ;
+                                }
                         }
 
                         /* check for beast data available and errors */
@@ -1148,10 +1159,10 @@ again:
 
                 } else {
                         /*
-                         * poll error
+                         * poll error - check errno
                          */
                          
-                        /* if it was 'interupted system call' then it was a signal - carry on */
+                        /* if error was 'interupted system call' then carry on */
                         if (errno == EINTR) {
                                 goto again;
                         } else {
