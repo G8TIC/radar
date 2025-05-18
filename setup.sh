@@ -46,7 +46,9 @@ fi
 # Determine which dump1090 protocols are supported
 #
 BEAST=`netstat -pan | grep LISTEN | grep -Eo '30005' | uniq`
-AVR=`netstat -pan | grep LISTEN | grep -Eo '30002' | uniq`
+
+# we no longer support AVR since it doesn't give us RSSI and MLAT
+#AVR=`netstat -pan | grep LISTEN | grep -Eo '30002' | uniq`
 
 
 
@@ -71,16 +73,15 @@ echo "depending on how it was installed... we'll try and figure this out automat
 echo ""
 
 if [[ $BEAST == "30005" ]]; then
-	echo "Your system supports BEAST binary protocol... which is great ;-)"
-elif [[ $AVR == "30002" ]]; then
-	echo "Your system supports AVR ASCII protocol... which we'll use as a fallback to BEAST"
+	echo "We found BEAST protocol support which is great ;-)"
 else
-	echo "Cannot find BEAST or AVR protocol on this system - is dump1090 or readsb running?"
+	echo "Cannot find BEAST protocol on this system - is dump1090 or readsb running?"
 	echo ""
 	echo "If you normally run dump1090/readsb on this machine say no here, re-start"
 	echo "dump1090/readsb and run setup again."
 	echo ""
-	echo "If you want to use a feed from another machine on your local network say yes here."
+	echo "If you want to use a feed from another machine on your local network say"
+	echo "Yes here and provide the IP address of the remote machine."
 	echo ""
 	
 	while true; do
@@ -134,7 +135,7 @@ echo "to protect data in transit from corruption, alteration, forgery and spoofi
 echo ""
 echo "You may have been provided with a pass-phrase/secret for use with the system"
 echo "in which case please enter it here.  If you don't have a PSK then leave this"
-echo "blank (just press enter) and we will use a default."
+echo "blank (just press enter) and we will use the default value."
 echo ""
 
 read -p "Please enter your pass-phrase or just hit [RETURN] : " PASSPHRASE
@@ -165,13 +166,6 @@ OPTIONS="-k $KEY"
 # add signing key
 #
 OPTIONS="${OPTIONS} -p ${PASSPHRASE}"
-
-#
-# if we don't find BEAST protocol on port 30005 assume the system is AVR and add switch
-#
-if [[ $BEAST != "30005" ]]; then
-	OPTIONS="${OPTIONS} -a"
-fi
 
 #
 # add remote ADS-B host if specified
