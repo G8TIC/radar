@@ -62,3 +62,17 @@ make: *** [Makefile:69 : radar.o] Erreur 1
 
 ## Version 2.07-4 6th May 2025
 Don't ignore return code from read() even with poll() on timerfd_create() type timers.
+
+## Version 2.08-0 9th Nov 2025
+Tidy up documentation and fix spelling mistakes in code comments
+Replace Apple sha256.[c,h] and hmac-sha256.[c,h] with new implementations
+from my Github project https://github.com/G8TIC/Sha-Hmac
+Replace Aaron D. Gifford's SHA512 with new implementation from my Github
+project/
+Tidy up beast.[c,h] to remove redundant code, simplify, etc.
+Fix bug in beast.c that prevented serial port connected devices from working
+Move stats data structure into stats.c and make it global
+Change udp.c to use a traditional (un-ccnnected) socket to improve error
+handling.
+Add a "-z" option to reset the UDP stack after sendto() fails - this is
+experiemtal and shouldn't be needed.

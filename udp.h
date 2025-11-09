@@ -15,12 +15,12 @@
  * enumerated list of UDP states
  */
 enum udpstate {
-        UDP_IDLE,					/* idle state at start-up and after failure/retry */
-        UDP_WAIT_LOOKUP,				/* waiting for DNS look-up to complete */
-        UDP_WAIT_CONNECT,				/* wait for socket to be connect()-ed */
-        UDP_CONNECTED,					/* Normal run state */
-        UDP_RETRY_WAIT					/* Something failed - waiting to restart */
+        UDP_STATE_IDLE,
+        UDP_STATE_STARTUP,				/* idle state at start-up and after failure/retry */
+        UDP_STATE_RUN,					/* Normal run state */
+        UDP_STATE_RETRY_WAIT				/* Something failed - waiting to restart */
 };
+
 
 /*
  * exported functions

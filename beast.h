@@ -11,10 +11,10 @@
 #include <termios.h>
 
 #define BEAST_MAX_FRAME			22		/* maximum size of a Beast data frame */
-#define BEAST_MAX_READ			1024		/* maximum TCP read size */
+#define BEAST_BUF_SIZE			1024		/* Beast buffer size */
 #define BEAST_ESC			0x1A		/* Escape character used in BEAST frames */
 #define BEAST_CONNECT_RETRY		5		/* connection retry interval - 5 seconds */
-#define BEAST_SERIAL_PORT_NAME		64
+#define BEAST_SERIAL_PORT_NAME		64		/* size of a serial port device name */
 #define BEAST_TCP_PORT			30005		/* BEAST protocol port */
 
 
@@ -32,9 +32,9 @@ enum beast_mode {
  * enumerated list of connection states
  */
 enum beast_state {
-        BEAST_DISCONNECTED,				/* idle state */
-        BEAST_CONNECTED,				/* connected and receiving data */
-        BEAST_RETRY_WAIT				/* waiting to reconnect */
+        BEAST_STATE_DISCONNECTED,			/* disconnected state */
+        BEAST_STATE_CONNECTED,				/* connected and receiving data */
+        BEAST_STATE_RETRY_WAIT				/* waiting to reconnect */
 };
 
 
