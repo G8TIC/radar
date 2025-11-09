@@ -27,9 +27,14 @@
  *
  * SUPPORTED DEVICES
  *
- * Radar supports TLS-SDR type dongles using dump1090 or readsb and supports
- * USB connections to dedicated Mode-S BEAST recivers and GNS 5892/5894 using
- * HULC (modified Beast protocol).
+ * Radar supports a wide range of receivers:
+ *
+ *   * RTL-SDR USB dongles are supported via readsb or dump1090
+ *
+ *   * AirSpy Mini/Airspy V2 are supported via their dedicated software
+ *
+ *   * Mode-S BEAST RX (via USB) and GNS 5892/5894 using HULC via RS232  serial
+ *
  *
  *
  * ENCRYPTION AND AUTHENTICATION
@@ -38,7 +43,7 @@
  * be little point encrypting the mesasges on the wire, however for system security
  * we want to check the integrity of messages and authenticate the sender is genuine.
  *
- * We prove the integrity and authenticity of each message using a 64-bit digital
+ * We implement integrity and authenticity of each message using a 64-bit digital
  * signature called an "authentication tag" - this is a truncated HMAC-SHA256
  * digest of the message or "signature".
  *
@@ -86,21 +91,13 @@
  *
  * COPYRIGHT
  *
- * Copyright (C) 2023 by Michael J. Tubby B.Sc. MIET and 1090MHz Solutions Ltd.
+ * Copyright (C) 2023-2025 by Michael J. Tubby B.Sc. MIET and 1090MHz Solutions Ltd.
  * trading as "1090MHz UK" - All Rights Reserved.
  *
  * 
  * LICENSE
  *
- * This program is free software: you can redistribute it and/or modify it under the
- * terms of the GNU General Public License as published by the Free Software Foundation,
- * either version 3 of the License, or at your option any later version.
- *
- * A copy of the GNU General Public License is included in the file LICENSE.
- * 
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
- * PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+ * See LICENSE.md
  *
  *
  * USAGE
@@ -208,6 +205,7 @@ int rebind = 0;
 int everything = 0;
 int stats_interval = STATS_INTERVAL;
 int telemetry_interval = TELEMETRY_INTERVAL;
+int reset_udp = 0;
 uint64_t key;
 char hostname[HOSTNAME_LEN+1] = UDP_HOST;
 char psk[PSK_LEN+1] = "secret";
@@ -217,7 +215,6 @@ uint32_t seq = 1;
 char username[USERNAME_LEN+1] = "nobody";
 char groupname[GROUPNAME_LEN+1] = "nogroup";
 int qos = 0;
-stats_t stats;							/* stats for reporting to central aggregator */
 uint32_t dupe_ss_count = 0;
 uint32_t dupe_es_count = 0;
 uint32_t send_count = 0;
@@ -767,8 +764,8 @@ int main(int argc, char *argv[])
                         break;
 
                 case 'k':
-                        if (strlen(optarg) > APIKEY_LEN) {
-                                qerror("radar: API key too long\n");
+                        if (strlen(optarg) != APIKEY_LEN) {
+                                qerror("radar: API key wrong length (should be %d characters)\n", APIKEY_LEN);
                         }
                         key = (uint64_t)strtoll(optarg, NULL, 16);
                         ++gotkey;
@@ -864,6 +861,10 @@ int main(int argc, char *argv[])
                                 printf("radar: rebind interval = %d seconds\n", rebind);
                         break;
 
+                case 'z':
+                        ++reset_udp;
+                        break;
+
                 case 'v':
                         puts(banner());
                         exit(0);
@@ -877,6 +878,7 @@ int main(int argc, char *argv[])
                         printf("  -p <psk>           : pre-shared key for HMAC authentication (signing of messages)\n");
                         printf("  -B                 : use Mode-S BEAST via USB connection\n");
                         printf("  -G                 : use GNS 5892/5894T HULC via serial connection\n");
+                        printf("  -S <serial port>   : specify serial port for Mode-S Beast connection (default: /dev/ttyUSB0)\n");
                         printf("  -c                 : enable sending Mode-A/C message (not recommended)\n");
                         printf("  -y                 : enable sending Mode-S Short messages (not recommended)\n");
                         printf("  -e                 : forward everything\n");
@@ -887,14 +889,14 @@ int main(int argc, char *argv[])
                         printf("  -s <seconds>       : Set the radio stats interval (default 900)\n");
                         printf("  -t <seconds>       : Set the telemetry interval (default 900)\n");
                         printf("  -d                 : run as daemon (detach from controlling tty)\n");
-                        printf("  -f                 : print forwarding stats once per second\n");
+                        printf("  -f                 : run in forground and print stats once per second\n");
                         printf("  -u <uid|username>  : set the UID or username for the process\n");
                         printf("  -g <gid|group>     : set the GID or group name for the process\n");
                         printf("  -q <qos>           : set the DSCP/IP ToS quality of service\n");
                         printf("  -n <seconds>       : time before re-binding UDP socket source port (CGNAT work-around)\n");
+                        printf("  -z                 : reset UDP sender after socket error\n");
                         printf("  -v                 : display version information and exit\n");
                         printf("  -x|xx|xxx          : set debug level\n");
-                        printf("  -S <serial port>   : specify serial port for Mode-S Beast connection (default: /dev/ttyUSB0)\n");
                         printf("  -?                 : help (this output)\n");
                         printf("\n");
                         exit(0);

@@ -51,7 +51,7 @@ void authtag_sign(uint8_t *out, int outlen, void *in, int inlen)
         int mod = HMAC_SHA256_SIZE - outlen;
         int idx;
 
-        hmac_sha256(hmac, in, inlen, key, AUTHTAG_KEY_LEN);
+        hmac_sha256(hmac, key, AUTHTAG_KEY_LEN, in, inlen);
         idx = hmac[22] % mod;
         memcpy(out, &hmac[idx], outlen);
 }
@@ -67,7 +67,7 @@ int authtag_check(uint8_t *tag, int taglen, uint8_t *in, int inlen)
         int idx;
         int i, j = 0, k = 0;
         
-        hmac_sha256(hmac, in, inlen, key, AUTHTAG_KEY_LEN);
+        hmac_sha256(hmac, key, AUTHTAG_KEY_LEN, in, inlen);
 
         idx = hmac[22] % mod;
 
@@ -95,7 +95,7 @@ int authtag_check(uint8_t *tag, int taglen, uint8_t *in, int inlen)
  */
 void authtag_init(char *secret)
 {
-        sha512(key, secret, strlen(secret));
+        sha512(key, (uint8_t *)secret, strlen(secret));
 
         if (debug)
                 hex_dump("Key", key, AUTHTAG_KEY_LEN);

@@ -27,7 +27,6 @@
 #include <linux/socket.h>
 #include <linux/ip.h>
 
-
 #include "defs.h"
 #include "udp.h"
 #include "hex.h"
@@ -38,19 +37,22 @@
  * external variables
  */
 extern int debug;
+extern int reset_udp;
+
 
 /*
  * local variables
  */
-static struct hostent *hostinfo;
-static struct sockaddr_in src, dst;
 static enum udpstate state;
-static int fd;
+static int udp_fd;
 static char hostname[HOSTNAME_LEN+1];
 static int qos;
 static int retry = 0;
 static int rebind_interval = 0;
 static int rebind = 0;
+static struct hostent *hostinfo;
+static struct sockaddr_in dest;
+
 
 /*
  * chgstate() - change state with optional debugging
@@ -69,17 +71,16 @@ static void chgstate(enum udpstate newstate)
  */
 static void reset_connection(void)
 {
-        if (fd) {
-                close(fd);
-                fd = 0;
+        if (udp_fd) {
+                close(udp_fd);
+                udp_fd = 0;
         }
 
         if (debug)
                 printf("reset_connection(): start retry timer...\n");
 
         retry = UDP_RETRY;
-
-        chgstate(UDP_RETRY_WAIT);
+        chgstate(UDP_STATE_RETRY_WAIT);
 }
 
 
@@ -105,14 +106,14 @@ static int host_lookup(void)
 
 
 /*
- * make_socket() - make a UDP socket for sending data
+ * make_socket() - make a UDP socket
  */
 static int make_socket(void)
 {
         int rc;
 
         /* make a UDP socket */
-        if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+        if ((udp_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         
                 if (debug)
                         printf("make_socket(): socket(): %s (%d)\n", strerror(errno), errno);
@@ -124,7 +125,7 @@ static int make_socket(void)
         if (qos) {
                 const int iptos = qos << 2;		/* QoS in top 6-bits of the IP header */
 
-                if ((rc = setsockopt(fd, IPPROTO_IP, IP_TOS, &iptos, sizeof(iptos)) < 0)) {
+                if ((rc = setsockopt(udp_fd, IPPROTO_IP, IP_TOS, &iptos, sizeof(iptos)) < 0)) {
         
                         if (debug)
                                 printf("make_socket(): setsockopt(): %s (%d)\n", strerror(errno), errno);
@@ -133,37 +134,11 @@ static int make_socket(void)
                 }
         }
 
-        /* setup my end (source) */ 
-        memset(&dst, 0, sizeof(src));
-        src.sin_family = AF_INET;
-        src.sin_addr.s_addr = htonl(INADDR_ANY);
-        src.sin_port = 0;
-
-        /* setup their end (destination) */
-        memset(&dst, 0, sizeof(dst));
-        dst.sin_family = AF_INET;
-        dst.sin_addr = *(struct in_addr*) hostinfo->h_addr;
-        dst.sin_port = htons(UDP_PORT);
-
-        return 1;
-}
-
-
-/*
- * connect_socket() - connect the socket so we can send on it
- */
-static int connect_socket(void)
-{
-        int rc;
-
-        /* connect the socket */
-        if ((rc = connect(fd, (struct sockaddr*)&dst,sizeof(dst)) < 0)) {
-
-                if (debug)
-                        printf("connect_socket(): %s (%d)\n", strerror(errno), errno);
-                        
-                return 0;
-        } 
+        /* setup destination */
+        memset(&dest, 0, sizeof(dest));
+        dest.sin_family = AF_INET;
+        dest.sin_addr = *(struct in_addr*) hostinfo->h_addr;
+        dest.sin_port = htons(UDP_PORT);
 
         return 1;
 }
@@ -174,15 +149,13 @@ static int connect_socket(void)
  */
 void udp_send(void *buf, int size)
 {
-        if (state == UDP_CONNECTED) {
+        if (state == UDP_STATE_RUN) {
                 int rc;
 
-                rc = send(fd, buf, size, 0);
+                rc = sendto(udp_fd, buf, size, 0, &dest, sizeof(dest));
 
                 if (rc >= 0) {
                         /* send succeeded */
-                
-                        /* update stats */
                         ++stats.tx_count;
                         stats.tx_bytes += size;
 
@@ -192,11 +165,12 @@ void udp_send(void *buf, int size)
                 } else {
                         /* send failed */
                         if (debug)
-                                printf("udp_send(): %s (%d)", strerror(errno), errno);
+                                printf("udp_send(): failed: %s (%d)", strerror(errno), errno);
                                 
-                        reset_connection();
+                        if (reset_udp)
+                                reset_connection();
                 }
-        }                
+        }
 }
 
 
@@ -208,79 +182,56 @@ void udp_init(char * host, int qs, int rb)
         strcpy(hostname, host);
         qos = qs;
         rebind_interval = rb;
-        fd = 0;
-        chgstate(UDP_IDLE);
+        chgstate(UDP_STATE_IDLE);
 }
 
 
 /*
- * udp_second() - run the UDP finite state-machine from teh housekeeping timer
+ * udp_second() - run the UDP finite state-machine from the housekeeping timer
  */
 void udp_second(void)
 {
         switch (state) {
-                case UDP_IDLE:
-                        chgstate(UDP_WAIT_LOOKUP);
-                        break;
-
-                case UDP_WAIT_LOOKUP:
+                case UDP_STATE_IDLE:
+                        /* perform DNS lookup for destination */
                         if (host_lookup())
-                                chgstate(UDP_WAIT_CONNECT);
+                                chgstate(UDP_STATE_STARTUP);
                         else
                                 reset_connection();
                         break;
 
-                case UDP_WAIT_CONNECT:
-                        if (make_socket() && connect_socket()) {
-                                if (rebind_interval)
-                                        rebind = rebind_interval;
-                                chgstate(UDP_CONNECTED);
+                case UDP_STATE_STARTUP:
+                        /* set up outgoing UDP */
+                        if (make_socket()) {
+                                rebind = rebind_interval ? rebind_interval : 0;
+                                chgstate(UDP_STATE_RUN);
                         } else {
                                 reset_connection();
                         }
                         break;
                 
-                case UDP_CONNECTED:
+                case UDP_STATE_RUN:
+                        /* rebind function is for CG-NAT encumbered connections that timeout */
                         if (rebind) {
-                        
                                 --rebind;
                         
                                 if (!rebind) {
-
-                                        close(fd);					/* close existing fd */
-                                        
-                                        if (make_socket() && connect_socket()) {	/* make new socket and connect it */
-                                        
-                                                if (rebind_interval)			/* reset interval timer */
-                                                        rebind = rebind_interval;
-                                        
-                                                chgstate(UDP_CONNECTED);		/* un-necessary but useful in debug */
-                                                
-                                        } else {
-                                                reset_connection();
-                                        }
+                                        if (udp_fd)
+                                                close(udp_fd);
+                                        chgstate(UDP_STATE_IDLE);
                                 }
                         }
                         break;
 
-                case UDP_RETRY_WAIT:
-                        if (retry)
+                case UDP_STATE_RETRY_WAIT:
+                        /* waiting to retry after an error/reset condition */
+                        if (retry) {
                                 --retry;
-                        if (!retry)
-                                chgstate(UDP_IDLE);
+                                
+                                if (!retry)
+                                        chgstate(UDP_STATE_IDLE);
+                        }
                         break;
-        }
-}
-
-
-/*
- * udp_close() - shutdown UDP
- */
-void udp_close(void)
-{
-        if (fd) {
-                close(fd);
-                fd = 0;
         }
 }
 
@@ -293,3 +244,14 @@ void udp_reset(void)
         reset_connection();
 }
 
+
+/*
+ * udp_close() - shutdown UDP
+ */
+void udp_close(void)
+{
+        if (udp_fd) {
+                close(udp_fd);
+                udp_fd = 0;
+        }
+}

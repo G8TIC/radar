@@ -20,26 +20,6 @@ extern int debug;
 
 
 /*
- * a data type for holding duplicate checks on Short Squitter (7 bytes)
- */
-typedef struct {
-        uint8_t ss[MODE_SS_LEN];
-        uint64_t ts;
-        UT_hash_handle hh;
-} dupe_ss_t;
-
-
-/*
- * a data type for holding duplicate checks on Extended Squitter (14 bytes)
- */
-typedef struct {
-        uint8_t es[MODE_ES_LEN];
-        uint64_t ts;
-        UT_hash_handle hh;
-} dupe_es_t;
-
-
-/*
  * a list of duplicate messages
  */
 dupe_ss_t *dupe_ss = NULL;

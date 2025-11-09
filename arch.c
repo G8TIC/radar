@@ -71,5 +71,3 @@ int arch_arm_number(void)
         return arm;
 }
 
-
-

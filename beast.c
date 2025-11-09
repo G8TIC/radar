@@ -1,13 +1,18 @@
 /*
- * beast.c -- Implement the ADS-B BEAST protocol over TCP
+ * beast.c -- Implement the ADS-B BEAST protocol
  * Author: Michael J. Tubby B.Sc. MIET  mike@tubby.org
  *
  * ABSTRACT
  *
- * Make a TCP/IP connection to the BEAST protocol on localhost:30005 from Dump1090
- * and it's friends and parse frames de-escaping them.
+ * Implement he BEAST binary block-mode protocol over a TCP/IP
+ * connection, a USB serial connection or a physical serial port.
  *
- * Look for message type 0x33 which is RSSI + MLAT + Extended Squitter and pass
+ * Make a TCP/IP connection to a source of the BEAST protocol on 
+ * TCP/localhost.30005 as provided by Readsb and Dump1090 or from a
+ * read or virtual serial port for Mode-S-Beast hardware.
+ *
+ * Parse frames de-escaping them and look for Extended Sequitter
+ * (message type 0x33) which is MLAT + RSSI + 14-byrtes of data and pass
  * these up to radar_send() for forwarding to the aggregator.
  *
  */
@@ -37,6 +42,11 @@
 #include "qerror.h"
 
 
+#if 0
+#define DEBUG_BEAST
+#endif
+
+
 /*
  * external variables
  */
@@ -46,19 +56,19 @@ extern int debug;
 /*
  * global variables
  */
-int beast_fd;
+int beast_fd = 0;
 
 /*
  * local variables
  */
 static enum beast_mode mode = BEAST_MODE_NONE;
 static int state;
-static uint16_t pps;
+static uint16_t pps = 0;
 static enum beast_state constate;
 static char hostname[HOSTNAME_LEN+1];
 static uint16_t port;
 static struct sockaddr_in saddr;
-static int retry_counter;
+static int retry_count;
 static char dev[BEAST_SERIAL_PORT_NAME+1];
 static speed_t speed;
 
@@ -68,7 +78,7 @@ static speed_t speed;
  */
 static void chgconstate(enum beast_state new)
 {
-#if 0
+#ifdef DEBUG_BEAST
         if (debug > 4)
                 printf("chgstate(): %d -> %d\n", constate, new);
 #endif
@@ -81,14 +91,12 @@ static void chgconstate(enum beast_state new)
  */
 static void chgstate(int new)
 {
-#if 0
+#ifdef DEBUG_BEAST
         if (debug > 4)
                 printf("chgstate(): %d -> %d\n", state, new);
 #endif
         state = new;
 }
-
-
 
 
 /*
@@ -106,14 +114,16 @@ static void process_frame(uint8_t *bp, int size)
 /*
  * process_input() - process a chunk of BEAST protocol input from a TCP or serial connection
  */
-void process_input(uint8_t *bp, int size)
+static void process_input(uint8_t *bp, int size)
 {
         static uint8_t buf[BEAST_MAX_FRAME];
         static uint8_t *op = buf;
         uint8_t b;
         int sz;
 
-        //printf("process_input(): size: %d\n", size);
+#ifdef DEBUG_BEAST
+        printf("process_input(): size: %d\n", size);
+#endif
 
         ++telemetry.socket_reads;
         telemetry.bytes_read += size;
@@ -131,9 +141,11 @@ void process_input(uint8_t *bp, int size)
                         op = buf;
                         chgstate(0);
                 }
-
-                // printf("process_input(): b=%02X sz=%d state=%d\n", b, sz, state);
                 
+#ifdef DEBUG_BEAST
+                printf("process_input(): b=%02X sz=%d state=%d\n", b, sz, state);
+#endif
+
                 switch (state) {
                         case 0:							/* wait for first instance of Escape */
                                 if (b == BEAST_ESC) {
@@ -188,15 +200,6 @@ void process_input(uint8_t *bp, int size)
 }
 
 
-static void common_init(void)
-{
-        beast_fd = 0;
-        pps = 0;
-        chgconstate(BEAST_DISCONNECTED);
-        retry_counter = 1;
-}
-
-
 /*
  * beast_reset_connection() - reset the TCP connection after an error
  */
@@ -210,14 +213,14 @@ void beast_reset_connection(void)
         if (debug)
                 printf("beast_reset_connection(): BEAST connection reset... start retry timer...\n");
         
-        retry_counter = BEAST_CONNECT_RETRY;
+        retry_count = BEAST_CONNECT_RETRY;
 
-        chgconstate(BEAST_RETRY_WAIT);
+        chgconstate(BEAST_STATE_RETRY_WAIT);
 }
 
 
 /*
- * connect_serial() - attempt to make a connection - factorised code
+ * connect_serial() - attempt to make a connection
  */
 static int connect_serial(void)
 {
@@ -230,21 +233,17 @@ static int connect_serial(void)
                         
                 term.c_iflag = term.c_oflag = term.c_lflag = 0;
                         
-                // term.c_cflag |= B921600;		/* 921Kbps baud rate */
-                // term.c_cflag |= B3000000;
+                term.c_cflag |= speed;				/* speed is stored at start-up */
+                term.c_cflag |= CREAD;				/* enable receiver */
+                term.c_cflag |= CS8;				/* 8-bit data */
+                term.c_cflag |= CLOCAL;				/* No modem controls */
+                term.c_cflag |= CRTSCTS;			/* hardware flow control */
+                term.c_iflag |= IGNBRK;				/* ignore Break on input */
 
-                term.c_cflag |= speed;
-
-                term.c_cflag |= CREAD;			/* enable receiver */
-                term.c_cflag |= CS8;			/* 8-bit data */
-                term.c_cflag |= CLOCAL;			/* No modem controls */
-                term.c_cflag |= CRTSCTS;		/* hardware flow control */
-                term.c_iflag |= IGNBRK;			/* ignore Break on input */
-
-                term.c_cc[VMIN] = 0;			/* we're using non-blocking so don't set these */
+                term.c_cc[VMIN] = 0;				/* we're using non-blocking so don't set these */
                 term.c_cc[VTIME] = 0;
 
-                tcsetattr(beast_fd, TCSAFLUSH, &term);	/* set attribues and flush input */
+                tcsetattr(beast_fd, TCSAFLUSH, &term);		/* set attribues and flush input */
                 tcflush(beast_fd, TCIFLUSH);
 
                 ++telemetry.connect_success;
@@ -290,8 +289,6 @@ static int connect_socket(void)
                         
                         if (debug)
                                 printf("connect_socket(): Connect to BEAST source FAILED: %s (%d)\n", strerror(errno), errno);
-                        
-                        return 0;
                 }
         }
         
@@ -300,14 +297,13 @@ static int connect_socket(void)
 
 
 /*
- * beast_read() - called from main when poll() indicates that there's soemthing
- * to be read from a Beast device (TCP or serial) - here they are just reads on
- * a file descriptor
+ * beast_read() - called from main when poll() indicates that there's something
+ * to be read from a Beast device (TCP or serial)
  */
 void beast_read(void)
 {
         int size;
-        uint8_t buf[1024];
+        uint8_t buf[BEAST_BUF_SIZE];
         
         /* data available or connection closed - do a read to find out which */
         size = read(beast_fd, buf, sizeof(buf));
@@ -337,7 +333,7 @@ void beast_serial_init(char *port, speed_t spd)
         mode = BEAST_MODE_SERIAL;
         strncpy(dev, port, BEAST_SERIAL_PORT_NAME);
         speed = spd;
-        common_init();
+        chgconstate(BEAST_STATE_DISCONNECTED);
 }
 
 
@@ -349,7 +345,7 @@ void beast_tcp_init(char *addr, uint16_t prt)
         mode = BEAST_MODE_TCP;
         strncpy(hostname, addr, HOSTNAME_LEN);
         port = prt;
-        common_init();
+        chgconstate(BEAST_STATE_DISCONNECTED);
 }
 
 
@@ -372,22 +368,21 @@ void beast_second(void)
 {
         switch (constate) {
 
-                case BEAST_DISCONNECTED:
-                        /* attemtp to connect to BEAST source */
-                        
+                case BEAST_STATE_DISCONNECTED:
+                         /* attempt to connect or reconnect to the BEAST source */
                         if (mode == BEAST_MODE_TCP) {
                                 if (connect_socket()) {
                                         /* connect success */
-                                        chgconstate(BEAST_CONNECTED);
+                                        chgconstate(BEAST_STATE_CONNECTED);
                                 } else {
                                         /* connect failed */
                                         beast_reset_connection();
                                 }
 
-                        } else if (mode == BEAST_MODE_TCP) {
+                        } else if (mode == BEAST_MODE_SERIAL) {
                                 if (connect_serial()) {
                                         /* connect success */
-                                        chgconstate(BEAST_CONNECTED);
+                                        chgconstate(BEAST_STATE_CONNECTED);
                                 } else {
                                         /* connect failed */
                                         beast_reset_connection();
@@ -395,16 +390,18 @@ void beast_second(void)
                         }
                         break;
 
-                case BEAST_CONNECTED:
+                case BEAST_STATE_CONNECTED:
+                        /* nothing to do */
                         break;
 
-                case BEAST_RETRY_WAIT:
-                        if (retry_counter) {
-                                --retry_counter;
-                                if (!retry_counter) {
+                case BEAST_STATE_RETRY_WAIT:
+                        /* count down and retry */                
+                        if (retry_count) {
+                                --retry_count;
+                                if (!retry_count) {
                                         if (debug)
                                                 printf("beast_second(): change state to allow re-connect\n");
-                                        chgconstate(BEAST_DISCONNECTED);
+                                        chgconstate(BEAST_STATE_DISCONNECTED);
                                 }
                         }
                         break;

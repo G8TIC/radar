@@ -16,36 +16,45 @@
 
 #include "radar.h"
 
+
+stats_t stats;					/* global for collecting stats */
+
 static int interval;
-static int countdown;
+static int count;
 
 
+/*
+ * stats_init() - initialise the statistics sending every ival interval (seconds)
+ */
 void stats_init(int ival)
 {
         if (ival) {
                 time_t ts = time(NULL);
 
                 memset(&stats, 0, sizeof(stats_t));
-                stats.start = (uint32_t)ts;
+                stats.start = stats.now = (uint32_t)ts;
                 interval = ival;
-                countdown = 15;			/* first stats after 15 seconds */
+                count = STATS_INITIAL;			/* first stats after 2 seconds to indicate we're online */
         } else {
-                countdown = 0;
+                count = 0;
         }
 }
 
 
+/*
+ * stats_second() - house keeping
+ */
 void stats_second(void)
 {
-        if (countdown) {
-                --countdown;
+        if (count) {
+                --count;
                 
-                if (!countdown) {
+                if (!count) {
                         time_t ts = time(NULL);
                 
                         stats.now = (uint32_t)ts;
                         radar_send_stats();
-                        countdown = interval;
+                        count = interval;
                 }
         }
 }

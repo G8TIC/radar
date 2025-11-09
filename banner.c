@@ -1,3 +1,7 @@
+/*
+ * banner.c -- create program banner string
+ * Author: Michael J. Tubby B.Sc. MIET G8TIC    mike@tubby.org
+ */
 
 #include <string.h>
 #include <stdio.h>
@@ -18,5 +22,4 @@ char * banner(void)
 
         return buf;
 }
-
 
