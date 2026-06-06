@@ -71,6 +71,7 @@ static struct sockaddr_in saddr;
 static int retry_count;
 static char dev[BEAST_SERIAL_PORT_NAME+1];
 static speed_t speed;
+static int obs_count = 0;
 
 
 /*
@@ -108,6 +109,8 @@ static void process_frame(uint8_t *bp, int size)
                 radar_process(&bp[1], bp[7], &bp[8], size-8);
                 ++pps;
         }
+        
+        obs_count = BEAST_OBS_COUNT;
 }
 
 
@@ -281,14 +284,14 @@ static int connect_socket(void)
                         ++telemetry.connect_success;
                         
                         if (debug)
-                                printf("connect_socket(): Connected to BEAST source\n");
+                                printf("connect_socket(): Connected to BEAST source: %s:%d\n", inet_ntoa(saddr.sin_addr), port);
 
                         return beast_fd;
                 } else {
                         ++telemetry.connect_fail;
                         
                         if (debug)
-                                printf("connect_socket(): Connect to BEAST source FAILED: %s (%d)\n", strerror(errno), errno);
+                                printf("connect_socket(): Connect to BEAST source: %s:%d failed %s (%d)\n", inet_ntoa(saddr.sin_addr), port, strerror(errno), errno);
                 }
         }
         
@@ -354,7 +357,7 @@ void beast_tcp_init(char *addr, uint16_t prt)
  */
 void beast_close(void)
 {
-        if (beast_fd) {
+        if (beast_fd > 0) {
                 close(beast_fd);
                 beast_fd = 0;
         }                
@@ -374,6 +377,9 @@ void beast_second(void)
                                 if (connect_socket()) {
                                         /* connect success */
                                         chgconstate(BEAST_STATE_CONNECTED);
+                                        
+                                        /* reset obs counter */
+                                        obs_count = BEAST_OBS_COUNT;
                                 } else {
                                         /* connect failed */
                                         beast_reset_connection();
@@ -383,6 +389,9 @@ void beast_second(void)
                                 if (connect_serial()) {
                                         /* connect success */
                                         chgconstate(BEAST_STATE_CONNECTED);
+                                        
+                                        /* reset obs counter */
+                                        obs_count = BEAST_OBS_COUNT;
                                 } else {
                                         /* connect failed */
                                         beast_reset_connection();
@@ -391,7 +400,15 @@ void beast_second(void)
                         break;
 
                 case BEAST_STATE_CONNECTED:
-                        /* nothing to do */
+                        /* watch the obs counter */
+                        if (obs_count) {
+                                --obs_count;
+                                
+                                if (!obs_count) {
+                                        /* no longer handling frames - reset */
+                                        beast_reset_connection();
+                                }                                        
+                        }
                         break;
 
                 case BEAST_STATE_RETRY_WAIT:

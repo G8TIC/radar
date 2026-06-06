@@ -16,7 +16,7 @@
 #define BEAST_CONNECT_RETRY		5		/* connection retry interval - 5 seconds */
 #define BEAST_SERIAL_PORT_NAME		64		/* size of a serial port device name */
 #define BEAST_TCP_PORT			30005		/* BEAST protocol port */
-
+#define BEAST_OBS_COUNT			10		/* Obsolesence count */
 
 /*
  * enumerated list of operating modes
