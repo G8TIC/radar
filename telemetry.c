@@ -245,7 +245,7 @@ void telemetry_init(int ival)
                 
                 interval = ival;
                
-                countdown = 10;				/* send first telemetry after 10 seconds */
+                countdown = TELEMETRY_INITIAL;			/* send first telemetry after specified time */
 
         } else {
                 /* no telemetry */

@@ -4,15 +4,15 @@
  *
  * ABSTRACT
  *
- * Implement he BEAST binary block-mode protocol over a TCP/IP
+ * Implement the BEAST binary block-mode protocol over a TCP/IP
  * connection, a USB serial connection or a physical serial port.
  *
  * Make a TCP/IP connection to a source of the BEAST protocol on 
  * TCP/localhost.30005 as provided by Readsb and Dump1090 or from a
  * read or virtual serial port for Mode-S-Beast hardware.
  *
- * Parse frames de-escaping them and look for Extended Sequitter
- * (message type 0x33) which is MLAT + RSSI + 14-byrtes of data and pass
+ * Parse frames de-escaping them and look for Extended Squitter
+ * (message type 0x33) which is MLAT + RSSI + 14-bytes of data and pass
  * these up to radar_send() for forwarding to the aggregator.
  *
  */
@@ -29,7 +29,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdint.h>
-#include <errno.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
 #include <errno.h>
@@ -56,7 +55,7 @@ extern int debug;
 /*
  * global variables
  */
-int beast_fd = 0;
+int beast_fd = -1;
 
 /*
  * local variables
@@ -72,6 +71,10 @@ static int retry_count;
 static char dev[BEAST_SERIAL_PORT_NAME+1];
 static speed_t speed;
 static int obs_count = 0;
+static uint8_t buf[BEAST_MAX_FRAME+1];
+static uint8_t *op = buf;
+
+
 
 
 /*
@@ -100,32 +103,43 @@ static void chgstate(int new)
 }
 
 
+
+/*
+ * reset_parser() - reset the BEAST frame parser
+ */
+static void reset_parser(void)
+{
+        op = buf;
+        chgstate(0);
+}
+
+
 /*
  * process_frame() - process a decoded (de-escaped) BEAST frame
  */
 static void process_frame(uint8_t *bp, int size)
 {
-        if (bp[0] >= 0x31 && bp[0] <= 0x33) {
+        if ( (bp[0] == 0x31 && size == 10) || (bp[0] == 0x32 && size == 15) || (bp[0] == 0x33 && size == 22) ) {
                 radar_process(&bp[1], bp[7], &bp[8], size-8);
+                obs_count = BEAST_OBS_COUNT;
+                ++telemetry.frames_good;
                 ++pps;
+        } else {
+                ++telemetry.frames_bad;
         }
-        
-        obs_count = BEAST_OBS_COUNT;
 }
 
 
 /*
  * process_input() - process a chunk of BEAST protocol input from a TCP or serial connection
  */
-static void process_input(uint8_t *bp, int size)
+static void process_input(uint8_t *bp, ssize_t size)
 {
-        static uint8_t buf[BEAST_MAX_FRAME];
-        static uint8_t *op = buf;
         uint8_t b;
         int sz;
 
 #ifdef DEBUG_BEAST
-        printf("process_input(): size: %d\n", size);
+        printf("process_input(): size: %zd\n", size);
 #endif
 
         ++telemetry.socket_reads;
@@ -140,9 +154,10 @@ static void process_input(uint8_t *bp, int size)
 
                 sz = op - buf;
 
-                if (sz > sizeof(buf)) {
-                        op = buf;
-                        chgstate(0);
+                if (sz > BEAST_MAX_FRAME) {
+                        ++telemetry.frames_bad;
+                        reset_parser();
+                        sz = 0;
                 }
                 
 #ifdef DEBUG_BEAST
@@ -158,16 +173,19 @@ static void process_input(uint8_t *bp, int size)
                                         ;
                                 }
                                 break;
-                        
-                        case 1:							/* look for start of frame */
+
+                        case 1:
                                 if (b >= 0x31 && b <= 0x33) {
                                         *op++ = b;
-                                        chgstate(2);				/* start of frame */
+                                        chgstate(2);
+                                } else if (b == BEAST_ESC) {
+                                        /* Still waiting for a frame type. */
+                                        op = buf;
                                 } else {
-                                        chgstate(0);				/* all other chars including Escape */
+                                        reset_parser();
                                 }
                                 break;
-                                
+
                         case 2:							/* inside frame */
                                 if (b == BEAST_ESC) {
                                         chgstate(3);				/* seen an Escape inside the frame */
@@ -183,8 +201,8 @@ static void process_input(uint8_t *bp, int size)
                                 } else {
                                         if (sz) {
                                                 process_frame(buf, sz);		/* process frame */
+                                                
                                                 op = buf;
-                                                ++telemetry.frames_good;
 
                                                 if (b >= 0x31 && b <= 0x33) {
                                                         *op++ = b;
@@ -193,10 +211,14 @@ static void process_input(uint8_t *bp, int size)
                                                         chgstate(1);
                                                 }
                                         } else {
-                                                chgstate(0);			/* error reset */
-                                                ++telemetry.frames_bad;
+                                                reset_parser();			/* error reset */
                                         }
                                 }
+                                break;
+                                
+                        default:
+                                ++telemetry.frames_bad;
+                                reset_parser();
                                 break;
                 }                
         }
@@ -208,16 +230,17 @@ static void process_input(uint8_t *bp, int size)
  */
 void beast_reset_connection(void)
 {
-        if (beast_fd) {
+        if (beast_fd >= 0) {
                 close(beast_fd);
-                beast_fd = 0;
+                beast_fd = -1;
         }
+        
+        reset_parser();
 
         if (debug)
                 printf("beast_reset_connection(): BEAST connection reset... start retry timer...\n");
         
         retry_count = BEAST_CONNECT_RETRY;
-
         chgconstate(BEAST_STATE_RETRY_WAIT);
 }
 
@@ -227,35 +250,47 @@ void beast_reset_connection(void)
  */
 static int connect_serial(void)
 {
-        beast_fd = open(dev, O_RDWR | O_NOCTTY | O_NDELAY | O_NONBLOCK);
+        int fd;
+        struct termios term;
 
-        if (beast_fd > 0) {
-                struct termios term;
-        
-                tcgetattr(beast_fd, &term);			/* get old port settings */
-                        
-                term.c_iflag = term.c_oflag = term.c_lflag = 0;
-                        
-                term.c_cflag |= speed;				/* speed is stored at start-up */
-                term.c_cflag |= CREAD;				/* enable receiver */
-                term.c_cflag |= CS8;				/* 8-bit data */
-                term.c_cflag |= CLOCAL;				/* No modem controls */
-                term.c_cflag |= CRTSCTS;			/* hardware flow control */
-                term.c_iflag |= IGNBRK;				/* ignore Break on input */
+        fd = open(dev, O_RDWR | O_NOCTTY | O_NONBLOCK);
 
-                term.c_cc[VMIN] = 0;				/* we're using non-blocking so don't set these */
-                term.c_cc[VTIME] = 0;
-
-                tcsetattr(beast_fd, TCSAFLUSH, &term);		/* set attribues and flush input */
-                tcflush(beast_fd, TCIFLUSH);
-
-                ++telemetry.connect_success;
-                return beast_fd;
-        } else {
+        if (fd < 0) {
                 ++telemetry.connect_fail;
-                return 0;
+                return -1;
         }
+
+        if (tcgetattr(fd, &term) < 0) {
+                close(fd);
+                ++telemetry.connect_fail;
+                return -1;
+        }
+
+        term.c_iflag = IGNBRK;
+        term.c_oflag = 0;
+        term.c_lflag = 0;
+
+        term.c_cflag &= ~(CSIZE | PARENB | CSTOPB);
+        term.c_cflag |= CS8 | CREAD | CLOCAL | CRTSCTS;
+
+        if (cfsetispeed(&term, speed) < 0 ||
+            cfsetospeed(&term, speed) < 0 ||
+            tcsetattr(fd, TCSAFLUSH, &term) < 0) {
+                close(fd);
+                ++telemetry.connect_fail;
+                return -1;
+        }
+
+        if (tcflush(fd, TCIFLUSH) < 0) {
+                close(fd);
+                ++telemetry.connect_fail;
+                return -1;
+        }
+
+        ++telemetry.connect_success;
+        return fd;
 }
+
 
 
 /*
@@ -263,11 +298,12 @@ static int connect_serial(void)
  */
 static int connect_socket(void)
 {
+        int fd;
         struct hostent *hostinfo;
 
-        beast_fd = socket(AF_INET, SOCK_STREAM, 0);
+        fd = socket(AF_INET, SOCK_STREAM, 0);
 
-        if (beast_fd < 0)
+        if (fd < 0)
                 qerror("connect_socket(): Could not create socket\n");
 
         memset(&saddr, 0, sizeof(saddr)); 
@@ -276,26 +312,38 @@ static int connect_socket(void)
 
         hostinfo = gethostbyname(hostname);
 
-        if (hostinfo != NULL) {
+        if (hostinfo == NULL) {
+                /* error in DNS lookup */
+                
+                if (debug)
+                        printf("connect_socket(): Unable to resolve %s: %s\n", hostname, hstrerror(h_errno));
+
+                close(fd);
+                ++telemetry.connect_fail;
+        
+        } else {
         
                 memcpy(&saddr.sin_addr.s_addr, hostinfo->h_addr, hostinfo->h_length);
 
-                if (connect(beast_fd, (struct sockaddr *)&saddr, sizeof(saddr)) >= 0) {
+                if (connect(fd, (struct sockaddr *)&saddr, sizeof(saddr)) >= 0) {
                         ++telemetry.connect_success;
                         
                         if (debug)
                                 printf("connect_socket(): Connected to BEAST source: %s:%d\n", inet_ntoa(saddr.sin_addr), port);
 
-                        return beast_fd;
+                        return fd;
                 } else {
+                        int save = errno;
+                
+                        close(fd);
                         ++telemetry.connect_fail;
                         
                         if (debug)
-                                printf("connect_socket(): Connect to BEAST source: %s:%d failed %s (%d)\n", inet_ntoa(saddr.sin_addr), port, strerror(errno), errno);
+                                printf("connect_socket(): Connect to BEAST source: %s:%d failed %s (%d)\n", inet_ntoa(saddr.sin_addr), port, strerror(save), save);
                 }
         }
         
-        return 0;
+        return -1;
 }
 
 
@@ -305,25 +353,29 @@ static int connect_socket(void)
  */
 void beast_read(void)
 {
-        int size;
-        uint8_t buf[BEAST_BUF_SIZE];
+        if (beast_fd >= 0) {
+                ssize_t size;
+                uint8_t buf[BEAST_BUF_SIZE];
         
-        /* data available or connection closed - do a read to find out which */
-        size = read(beast_fd, buf, sizeof(buf));
+                /* data available or connection closed - do a read to find out which */
+                size = read(beast_fd, buf, sizeof(buf));
 
-        if (size > 0) {
-                /* we have data - call beast common input handler to decode */
-                process_input(buf, size);
-                ++telemetry.socket_reads;
+                if (size > 0) {
+                        /* we have data - call beast common input handler to decode */
+                        process_input(buf, size);
 
-        } else if (size == 0) {
-                /* size is zero -> EOF -> connection closed by peer */
-                beast_reset_connection();
-                ++telemetry.disconnect;
-        } else {
-                /* size is negative -> error on socket */
-                beast_reset_connection();
-                ++telemetry.socket_error;
+                } else if (size == 0) {
+                        /* size is zero -> EOF -> connection closed by peer */
+                        beast_reset_connection();
+                        ++telemetry.disconnect;
+                } else {
+                        /* size is negative -> error on socket */
+                        if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK)
+                                return;
+        
+                        beast_reset_connection();
+                        ++telemetry.socket_error;
+                }
         }
 }
 
@@ -335,6 +387,7 @@ void beast_serial_init(char *port, speed_t spd)
 {
         mode = BEAST_MODE_SERIAL;
         strncpy(dev, port, BEAST_SERIAL_PORT_NAME);
+        dev[BEAST_SERIAL_PORT_NAME] = '\0';
         speed = spd;
         chgconstate(BEAST_STATE_DISCONNECTED);
 }
@@ -347,6 +400,7 @@ void beast_tcp_init(char *addr, uint16_t prt)
 {
         mode = BEAST_MODE_TCP;
         strncpy(hostname, addr, HOSTNAME_LEN);
+        hostname[HOSTNAME_LEN] = '\0';
         port = prt;
         chgconstate(BEAST_STATE_DISCONNECTED);
 }
@@ -357,10 +411,14 @@ void beast_tcp_init(char *addr, uint16_t prt)
  */
 void beast_close(void)
 {
-        if (beast_fd > 0) {
+        if (beast_fd >= 0) {
                 close(beast_fd);
-                beast_fd = 0;
+                beast_fd = -1;
         }                
+        
+        reset_parser();
+        obs_count = 0;
+        chgconstate(BEAST_STATE_DISCONNECTED);
 }
 
 
@@ -374,9 +432,17 @@ void beast_second(void)
                 case BEAST_STATE_DISCONNECTED:
                          /* attempt to connect or reconnect to the BEAST source */
                         if (mode == BEAST_MODE_TCP) {
-                                if (connect_socket()) {
+                                int fd;
+
+                                fd = connect_socket();
+                        
+                                if (fd >= 0) {
                                         /* connect success */
+                                        beast_fd = fd;
                                         chgconstate(BEAST_STATE_CONNECTED);
+
+                                        /* reset parser */
+                                        reset_parser();
                                         
                                         /* reset obs counter */
                                         obs_count = BEAST_OBS_COUNT;
@@ -386,9 +452,17 @@ void beast_second(void)
                                 }
 
                         } else if (mode == BEAST_MODE_SERIAL) {
-                                if (connect_serial()) {
+                                int fd;
+                                
+                                fd = connect_serial();
+                        
+                                if (fd >= 0) {
                                         /* connect success */
+                                        beast_fd = fd;
                                         chgconstate(BEAST_STATE_CONNECTED);
+                                        
+                                        /* reset parser */
+                                        reset_parser();
                                         
                                         /* reset obs counter */
                                         obs_count = BEAST_OBS_COUNT;

@@ -32,9 +32,8 @@ void stats_init(int ival)
                 time_t ts = time(NULL);
 
                 memset(&stats, 0, sizeof(stats_t));
-                stats.start = stats.now = (uint32_t)ts;
-                interval = ival;
-                count = STATS_INITIAL;			/* first stats after 2 seconds to indicate we're online */
+                stats.start = (uint32_t)ts;
+                count = interval = ival;
         } else {
                 count = 0;
         }

@@ -13,7 +13,6 @@
 #include "defs.h"
 
 #define STATS_INTERVAL		900		/* send stats every 900 seconds = 15 minutes */
-#define STATS_INITIAL		3		/* send first stats after three seconds */
 
 /*
  * statistics structure

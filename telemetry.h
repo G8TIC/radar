@@ -11,7 +11,7 @@
 #include "defs.h"
 
 #define TELEMETRY_INTERVAL	900			/* fifteen minutes */
-
+#define TELEMETRY_INITIAL	5
 
 /*
  * telemetry structure

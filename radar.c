@@ -188,14 +188,14 @@
 /*
  * global variables
  */
-int ending = 0;
+volatile int ending = 0;
+volatile int restart = 0;
 int isdaemon = 0;
 int protocol = 0;
 int dosyslog = 0;
 int dologfile = 0;
 int dostats = 0;
 int debug = 0;
-int restart = 0;
 int gotkey = 0;
 int send_ss = 0;
 int send_ac = 0;
@@ -588,93 +588,95 @@ void radar_send_multiframe(void)
  */
 void radar_process(uint8_t mlat[MLAT_LEN], uint8_t rssi, uint8_t *data, int len)
 {
-        if (len == MODE_ES_LEN) {						/* Mode-S Extended message (14 bytes) */
-                uint8_t df = data[0] >> 3;					/* downlink format */
+        if (data && len) {
+                uint8_t df = data[0] >> 3;      	                                /* downlink format */
 
-                if ( (df >= 17 && df <= 22) || everything ){
-                        int dupe;
-                        
-                        dupe = dupe_check_es(data);				/* duplicate check */
-                        
-                        if (dupe) {
-                                ++dupe_es_count;
-                                ++stats.dupe_es;
-                                ++stats.dupes;
+                if (len == MODE_ES_LEN) {						/* Mode-S Extended message (14 bytes) */
 
-                        } else {
+                        if ( (df >= 17 && df <= 22) || everything ){
+                                int dupe;
                         
-                                if (multiframe) {
-                                        /* 
-                                         * in multiframe mode we store ES data here and send when we have either
-                                         * reached the buffer limit or the multiframe forwarding timeout
-                                         */
-                                        memcpy(&esdata[num].mlat, mlat, MLAT_LEN);
-                                        esdata[num].rssi = rssi;
-                                        memcpy(&esdata[num].data, data, MODE_ES_LEN);
-                                        
-                                        ++num;
+                                dupe = dupe_check_es(data);				/* duplicate check */
+                        
+                                if (dupe) {
+                                        ++dupe_es_count;
+                                        ++stats.dupe_es;
+                                        ++stats.dupes;
 
-                                        if (num >= RADAR_MAX_MULTIFRAME)	/* buffer full? send now */
-                                                radar_send_multiframe();
-                                                
                                 } else {
-                                        radar_mode_es_t buf;
+                        
+                                        if (multiframe) {
+                                                /* 
+                                                 * in multiframe mode we store ES data here and send when we have either
+                                                 * reached the buffer limit or the multiframe forwarding timeout
+                                                 */
+                                                memcpy(&esdata[num].mlat, mlat, MLAT_LEN);
+                                                esdata[num].rssi = rssi;
+                                                memcpy(&esdata[num].data, data, MODE_ES_LEN);
+                                                
+                                                ++num;
 
-                                        memcpy(buf.mlat, mlat, MLAT_LEN);
-                                        buf.rssi = rssi;
-                                        memcpy(buf.data, data, MODE_ES_LEN);
+                                                if (num >= RADAR_MAX_MULTIFRAME)	/* buffer full? send now */
+                                                        radar_send_multiframe();
+                                                
+                                        } else {
+                                                radar_mode_es_t buf;
 
-                                        send_mode_es(&buf);
+                                                memcpy(buf.mlat, mlat, MLAT_LEN);
+                                                buf.rssi = rssi;
+                                                memcpy(buf.data, data, MODE_ES_LEN);
+
+                                                send_mode_es(&buf);
+                                        }
                                 }
                         }
-                }
                 
-                ++stats.rx_mode_es;
-                ++stats.rx_df[df];
+                        ++stats.rx_mode_es;
+                        ++stats.rx_df[df];
                 
-        } else if (len == MODE_SS_LEN) {					/* Mode-S Short message (7 bytes) */
-                uint8_t df = data[0] >> 3;					/* downlink format */
+                } else if (len == MODE_SS_LEN) {					/* Mode-S Short message (7 bytes) */
 
-                if (send_ss) {
-                        int dupe;
+                        if (send_ss) {
+                                int dupe;
                 
-                        dupe = dupe_check_ss(data);
+                                dupe = dupe_check_ss(data);
 
-                        if (dupe) {
-                                if (debug > 2)
-                                        printf("radar_process(): not sending duplicate SS\n");
+                                if (dupe) {
+                                        if (debug > 2)
+                                                printf("radar_process(): not sending duplicate SS\n");
                                 
-                                ++dupe_ss_count;
-                                ++stats.dupe_ss;
-                                ++stats.dupes;
+                                        ++dupe_ss_count;
+                                        ++stats.dupe_ss;
+                                        ++stats.dupes;
 
-                        } else {
-                                radar_mode_ss_t buf;
+                                } else {
+                                        radar_mode_ss_t buf;
 
-                                memcpy(buf.mlat, mlat, MLAT_LEN);          /* copy over MLAT */
-                                buf.rssi = rssi;                                /* copy RSSI */
-                                memcpy(buf.data, data, MODE_SS_LEN);	/* Short squitter */
-                         
-                                send_mode_ss(&buf);
+                                        memcpy(buf.mlat, mlat, MLAT_LEN);		/* copy over MLAT */
+                                        buf.rssi = rssi;				/* copy RSSI */
+                                        memcpy(buf.data, data, MODE_SS_LEN);		/* Short squitter */
+         
+                                        send_mode_ss(&buf);
+                                }
                         }
-                }
-
-                ++stats.rx_mode_ss;
-                ++stats.rx_df[df];
+                                
+                        ++stats.rx_mode_ss;
+                        ++stats.rx_df[df];
         
-        } else if (len == MODE_AC_LEN) {
+                } else if (len == MODE_AC_LEN) {
+                
+                        if (send_ac) {
+                                radar_mode_ac_t buf;
 
-                if (send_ac) {
-                        radar_mode_ac_t buf;
-
-                        memcpy(buf.mlat, mlat, MLAT_LEN);			/* copy over MLAT */
-                        buf.rssi = rssi;					/* copy RSSI */
-                        memcpy(buf.data, data, MODE_AC_LEN);			/* Mode-A/C short */
+                                memcpy(buf.mlat, mlat, MLAT_LEN);			/* copy over MLAT */
+                                buf.rssi = rssi;					/* copy RSSI */
+                                memcpy(buf.data, data, MODE_AC_LEN);			/* Mode-A/C short */
                          
-                        send_mode_ac(&buf);
-                }
+                                send_mode_ac(&buf);
+                        }
 
-                ++stats.rx_mode_ac;
+                        ++stats.rx_mode_ac;
+                }
         }
 }
 
@@ -1051,7 +1053,7 @@ int main(int argc, char *argv[])
          */
         if (multiframe) {
 #if 0
-                struct itimerspec spec_forward = {		/* radar multi-frame forwarding intervl */
+                struct itimerspec spec_forward = {		/* radar multi-frame forwarding interval */
                         { 0, RADAR_FORWARD_INTERVAL },
                         { 0, RADAR_FORWARD_INTERVAL }
                 };

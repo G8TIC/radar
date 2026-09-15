@@ -84,10 +84,10 @@ int authtag_check(uint8_t *tag, int taglen, uint8_t *in, int inlen)
 
 
 /*
- * authtag_init() - create key for ue by HMAC-256 functions later
+ * authtag_init() - create key for use by HMAC-256 functions later
  *
  * This takes a variable length pass-phase/secret key as the input and generates a 512-bit (64 byte)
- * SHA512 has as the output.
+ * SHA512 hash as the output.
  *
  * The 512-bit output is effectively 'key expansion' from the input secret and results in 512-bits/
  * 64-bytes of material that is optimal for HMAC-SHA256 as this needs two 32-byte keys.
