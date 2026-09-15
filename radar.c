@@ -1093,9 +1093,10 @@ int main(int argc, char *argv[])
                 fds[1].events = (multiframe) ? POLLIN : 0;
 
                 /* watch for input, hangups and errors from Beast connection, if active */
-                if (beast_fd) {
+                if (beast_fd >= 0) {
                         fds[2].fd = beast_fd;
                         fds[2].events = POLLIN|POLLHUP|POLLERR;
+                        fds[2].revents = 0;
                         ++nfds;
                 }
 
@@ -1107,7 +1108,6 @@ int main(int argc, char *argv[])
                  *      <0 : an error occurred - consult errno for reason
                  *
                  */
-again:
                 rc = poll(fds, nfds, 250);
 
                 if (rc > 0) {
@@ -1115,17 +1115,38 @@ again:
                          * poll() input available
                          */
                          
-                        /* check house-keeping timer */
-                        if (fds[0].revents & POLLIN) {
-                                rc = read(timer_fd, dummybuf, 8);
-                                
-                                if (rc > 0) {
-                                        house_keeping();
+                        /* check for beast data available and errors */
+                        if (beast_fd >= 0) {
+                                if (fds[2].revents & POLLIN) {
+                                        beast_read();
+                                } else if (fds[2].revents & (POLLHUP | POLLERR | POLLNVAL)) {
+                                        beast_reset_connection();
+                                }
+                        }
+
+                        /* check for errors before beast data available */
+                        if (beast_fd >= 0) {
+                                if (fds[2].revents & (POLLHUP | POLLERR | POLLNVAL)) {
+                                        beast_reset_connection();
+                                } else if (fds[2].revents & POLLIN) {
+                                        beast_read();
                                 } else {
                                         /* should not get here */
                                         ;
                                 }
                         }
+
+                        /* check for beast data available and errors */
+                        if (beast_fd >= 0) {
+                                if (fds[2].revents & POLLNVAL) {
+                                        beast_reset_connection();
+                                } else if (fds[2].revents & POLLIN) {
+                                        beast_read();
+                                } else if (fds[2].revents & (POLLHUP | POLLERR)) {
+                                        beast_reset_connection();
+                                }
+                        }
+
 
                         /* check fast forwarding timer (for multframe) */
                         if (multiframe && (fds[1].revents & POLLIN)) {
@@ -1142,14 +1163,18 @@ again:
                                 }
                         }
 
-                        /* check for beast data available and errors */
-                        if (beast_fd) {
-                                if (fds[2].revents & POLLIN) {
-                                        beast_read();
-                                } else if (fds[2].revents & POLLHUP || fds[2].revents & POLLERR) {
-                                        beast_reset_connection();
+                        /* check house-keeping timer */
+                        if (fds[0].revents & POLLIN) {
+                                rc = read(timer_fd, dummybuf, 8);
+                                
+                                if (rc > 0) {
+                                        house_keeping();
+                                } else {
+                                        /* should not get here */
+                                        ;
                                 }
                         }
+
 
                 } else if (rc == 0) {
                         /*
@@ -1168,7 +1193,9 @@ again:
                          
                         /* if error was 'interupted system call' then carry on */
                         if (errno == EINTR) {
-                                goto again;
+                                
+                                continue;
+                                
                         } else {
                                 /* anything else then error exit */
                                 qerror("poll() error: %s (%d)\n", strerror(errno), errno);
