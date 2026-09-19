@@ -10,8 +10,7 @@
 
 #include "defs.h"
 
-#define TELEMETRY_INTERVAL	900			/* fifteen minutes */
-#define TELEMETRY_INITIAL	5
+#define TELEMETRY_INTERVAL	917			/* fifteen minutes + 17 seconds */
 
 /*
  * telemetry structure
@@ -102,7 +101,7 @@ extern telemetry_t telemetry;
 /*
  * exported functions
  */
-void telemetry_init(int);
+void telemetry_init(void);
 void telemetry_second(void);
 void telemetry_send(void);
 

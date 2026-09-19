@@ -52,7 +52,7 @@ extern stats_t stats;
 /*
  * exported functions
  */
-void stats_init(int);
+void stats_init(void);
 void stats_second(void);
 void stats_send(void);
 

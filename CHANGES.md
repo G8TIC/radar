@@ -48,7 +48,7 @@ minutes.
 Increase multiframe transcription buffer to 1024 bytes to accomodate larger messages.
 
 ## Version 2.07-3 5th May 2025
-Fix compile uner Ubuntu where "warn unused result" is being checked even when not specificied.
+Fix compile under Ubuntu where "warn unused result" is being checked even when not specificied.
 
 radar.c: In function ‘main’:
 radar.c:1115:33: error: ignoring return value of ‘read’, declared with attribute warn_unused_result [-Werror=unused-result]
@@ -76,3 +76,16 @@ Change udp.c to use a traditional (un-ccnnected) socket to improve error
 handling.
 Add a "-z" option to reset the UDP stack after sendto() fails - this is
 experiemtal and shouldn't be needed.
+
+## Version 2.09 May 2026
+Attempt to fix occasional drop outs of receivers.
+Introduce multi-frame ADS-B (sends multiple messages in single UDP)
+
+## Version 2.10 19th Sept 2026
+Remove Mode-AC support as it isn't used
+Apply fix for Beast protocol state-machine where it would occasionally loose sync
+Re-order decoding of poll() return codes and flags
+Updates to multframe support after several days testing (matching updates in
+central aggregator)
+Multiframe is now enabled by default and saves approx. 40-50% bandwidth by
+sending up to 20 ADS-B messages per UDP message.

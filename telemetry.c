@@ -72,8 +72,7 @@ extern int debug;
 extern int protocol;
  
 telemetry_t telemetry;
-static int interval;
-static int countdown;
+static int counter;
 static char path[64];
 static FILE * tempf = NULL;
 
@@ -199,58 +198,49 @@ void telemetry_update(void)
  * zone allows us to pass the thermal zone number
  *
  */
-void telemetry_init(int ival)
+void telemetry_init(void)
 {
-        if (ival) {
-                /* initialise telemetry by getting constants */
-                struct utsname uts;
-                int rc;
+        struct utsname uts;
+        int rc;
 
-                memset(&telemetry, 0, sizeof(telemetry_t));
+        memset(&telemetry, 0, sizeof(telemetry_t));
 
-                setup_temp_zone();
+        setup_temp_zone();
         
-                rc = uname(&uts);
+        rc = uname(&uts);
                 
-                if (rc == 0) {
-                        memcpy(telemetry.sysname, uts.sysname, _UTSNAME_SYSNAME_LENGTH);
-                        memcpy(telemetry.nodename, uts.nodename, _UTSNAME_NODENAME_LENGTH);
-                        memcpy(telemetry.release, uts.release, _UTSNAME_RELEASE_LENGTH);
-                        memcpy(telemetry.version, uts.version, _UTSNAME_VERSION_LENGTH);
-                        memcpy(telemetry.machine, uts.machine, _UTSNAME_MACHINE_LENGTH);
-                }
-
-                telemetry.start = (uint32_t)time(NULL);
-
-                telemetry.version_major = VERSION_MAJOR;
-                telemetry.version_minor = VERSION_MINOR;
-                telemetry.version_patch = VERSION_PATCH;
-       
-                telemetry.gcc_major = GCC_MAJOR;
-                telemetry.gcc_minor = GCC_MINOR;
-                telemetry.gcc_patch = GCC_PATCH;
-
-                telemetry.glibc_major = __GLIBC__;
-                telemetry.glibc_minor = __GLIBC_MINOR__;
-
-                telemetry.cpu_arch = arch_type();
-                telemetry.cpu_count = get_nprocs();
-                
-                telemetry.sizeof_pointer = sizeof(void *);
-                telemetry.sizeof_short = sizeof(short);
-                telemetry.sizeof_int = sizeof(int);
-                telemetry.sizeof_long = sizeof(long);
-                telemetry.sizeof_long_long = sizeof(long long);
-                telemetry.sizeof_time_t = sizeof(time_t);
-                
-                interval = ival;
-               
-                countdown = TELEMETRY_INITIAL;			/* send first telemetry after specified time */
-
-        } else {
-                /* no telemetry */
-                countdown = 0;
+        if (rc == 0) {
+                memcpy(telemetry.sysname, uts.sysname, _UTSNAME_SYSNAME_LENGTH);
+                memcpy(telemetry.nodename, uts.nodename, _UTSNAME_NODENAME_LENGTH);
+                memcpy(telemetry.release, uts.release, _UTSNAME_RELEASE_LENGTH);
+                memcpy(telemetry.version, uts.version, _UTSNAME_VERSION_LENGTH);
+                memcpy(telemetry.machine, uts.machine, _UTSNAME_MACHINE_LENGTH);
         }
+
+        telemetry.start = (uint32_t)time(NULL);
+
+        telemetry.version_major = VERSION_MAJOR;
+        telemetry.version_minor = VERSION_MINOR;
+        telemetry.version_patch = VERSION_PATCH;
+       
+        telemetry.gcc_major = GCC_MAJOR;
+        telemetry.gcc_minor = GCC_MINOR;
+        telemetry.gcc_patch = GCC_PATCH;
+
+        telemetry.glibc_major = __GLIBC__;
+        telemetry.glibc_minor = __GLIBC_MINOR__;
+
+        telemetry.cpu_arch = arch_type();
+        telemetry.cpu_count = get_nprocs();
+                
+        telemetry.sizeof_pointer = sizeof(void *);
+        telemetry.sizeof_short = sizeof(short);
+        telemetry.sizeof_int = sizeof(int);
+        telemetry.sizeof_long = sizeof(long);
+        telemetry.sizeof_long_long = sizeof(long long);
+        telemetry.sizeof_time_t = sizeof(time_t);
+                
+        counter = TELEMETRY_INTERVAL + (TELEMETRY_INTERVAL / 2);	/* avoid stats updates */
 }
 
 
@@ -259,12 +249,12 @@ void telemetry_init(int ival)
  */
 void telemetry_second(void)
 {
-        if (countdown) {
-                --countdown;
+        if (counter) {
+                --counter;
                 
-                if (!countdown) {
+                if (!counter) {
                         telemetry_update();
-                        countdown = interval;
+                        counter = TELEMETRY_INTERVAL;
                 }
         }
 }

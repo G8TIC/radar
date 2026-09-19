@@ -120,7 +120,7 @@ static void reset_parser(void)
 static void process_frame(uint8_t *bp, int size)
 {
         if ( (bp[0] == 0x31 && size == 10) || (bp[0] == 0x32 && size == 15) || (bp[0] == 0x33 && size == 22) ) {
-                radar_process(&bp[1], bp[7], &bp[8], size-8);
+                radar_process_beast_frame(&bp[1], bp[7], &bp[8], size-8);
                 obs_count = BEAST_OBS_COUNT;
                 ++telemetry.frames_good;
                 ++pps;

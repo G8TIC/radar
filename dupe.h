@@ -37,6 +37,7 @@ typedef struct {
 
 int dupe_check_ss(uint8_t *);
 int dupe_check_es(uint8_t *);
-int dupe_clean(void);
+int dupe_clean_ss(void);
+int dupe_clean_es(void);
 
 #endif

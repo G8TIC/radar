@@ -33,7 +33,8 @@
 #define RADAR_OPCODE_CONFIG_REQ			0xC1
 #define RADAR_OPCODE_CONGIG_ACK			0xC2
 
-#define RADAR_MAX_MULTIFRAME			32
+#define RADAR_MAX_MULTIFRAME			40			/* max ADS-B frames per UDP */
+#define RADAR_DEFAULT_MULTIFRAME		20
 #define RADAR_FORWARD_INTERVAL			50			/* milliseconds */
 
 
@@ -57,14 +58,6 @@
 extern int protocol;
 
 
-typedef struct {
-        uint8_t mlat[MLAT_LEN];			/* Multi-lateration timestamp */
-        uint8_t rssi;        			/* Received signal strength indication */
-        uint8_t data[MODE_ES_LEN];		/* data */
-}  __attribute__((packed)) mode_es_frame_t;
-
-
-
 /*
  * radar message type:  Generic message (header)
  */
@@ -73,8 +66,18 @@ typedef struct {
         uint64_t ts;                            /* Timestamp (uS) */
         uint32_t seq;                           /* Message sequence number */
         uint8_t opcode;				/* opcode - message type */
-        uint8_t data[];				/* variable length data */
+//        uint8_t data[];				/* variable length data */
 } __attribute__((packed)) radar_msg_t;
+
+
+/*
+ * radar data sub-type (used in multi-frame messages)
+ */
+typedef struct {
+        uint8_t mlat[MLAT_LEN];			/* Multi-lateration timestamp */
+        uint8_t rssi;        			/* Received signal strength indication */
+        uint8_t data[MODE_ES_LEN];		/* data */
+}  __attribute__((packed)) radar_data_t;
 
 
 /*
@@ -164,17 +167,7 @@ typedef struct {
 
 
 /*
- * es_msg_t type - one extended squitter sub-message - 21 bytes
- */
-typedef struct {
-        uint8_t mlat[MLAT_LEN];			/* Multi-lateration timestamp */
-        uint8_t rssi;        			/* Received signal strength indication */
-        uint8_t data[MODE_ES_LEN];		/* data */
-} __attribute__((packed)) es_t;
-
-
-/*
- * radar message type: Mode-S Extended Squitter (14 bytes)
+ * radar message type: multi-frame ADS-B message
  */
 typedef struct {
         uint64_t key;                           /* API key for this radar station */
@@ -182,15 +175,16 @@ typedef struct {
         uint32_t seq;                           /* Message sequence number */
         uint8_t opcode;				/* Opcode: message type */
         uint8_t num;
-        es_t es[RADAR_MAX_MULTIFRAME];
-        uint8_t atag[AUTHTAG_LEN];		/* Authentication tag */
+        radar_data_t data[RADAR_MAX_MULTIFRAME];
+        uint8_t atag[AUTHTAG_LEN];		/* Authentication tag, NB may not be in a fixed place due to variable frame length! */
 } __attribute__((packed)) radar_multiframe_t;
+
 
 
 /*
  * external functions
  */
-void radar_process(uint8_t mlat[MLAT_LEN], uint8_t rssi, uint8_t *buf, int size);
+void radar_process_beast_frame(uint8_t mlat[MLAT_LEN], uint8_t rssi, uint8_t *buf, int size);
 void radar_send_keepalive(void);
 void radar_send_stats(void);
 void radar_send_telemetry(void);

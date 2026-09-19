@@ -86,10 +86,11 @@ int dupe_check_es(uint8_t *es)
 
 
 /*
- * clean_ss() - clean up the duplicate Short Squitter objects
+ * dupe_clean_ss() - clean up the duplicate Short Squitter objects
  */
-static int clean_ss(uint64_t now)
+int dupe_clean_ss(void)
 {
+        uint64_t now = ustime();
         dupe_ss_t *dp, *tmp;
         
         int count = 0;
@@ -110,10 +111,11 @@ static int clean_ss(uint64_t now)
 
 
 /*
- * clean_es() - clean up the duplicate Extended Squitter objects
+ * dupe_clean_es() - clean up the duplicate Extended Squitter objects
  */
-static int clean_es(uint64_t now)
+int dupe_clean_es(void)
 {
+        uint64_t now = ustime();
         dupe_es_t *dp, *tmp;
         
         int count = 0;
@@ -129,28 +131,6 @@ static int clean_es(uint64_t now)
                 }
         }
         
-        return count;
-}
-
-
-/*
- * dupe_clean() - clean the duplicate queues
- *
- * Called at 10Hz from the house keeping timer
- */
-int dupe_clean(void)
-{
-        uint64_t now = ustime();
-        int count_ss, count_es, count;
-        
-        count_ss = clean_ss(now);
-        count_es = clean_es(now);
-
-        count = count_ss + count_es;
-        
-        if (debug > 2 && count)
-                printf("dupe_clean(): deleted %d SS and %d ES\n", count_ss, count_es);
-
         return count;
 }
 

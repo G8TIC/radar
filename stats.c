@@ -18,25 +18,19 @@
 
 
 stats_t stats;					/* global for collecting stats */
-
-static int interval;
-static int count;
+static int counter;
 
 
 /*
  * stats_init() - initialise the statistics sending every ival interval (seconds)
  */
-void stats_init(int ival)
+void stats_init(void)
 {
-        if (ival) {
-                time_t ts = time(NULL);
+        time_t ts = time(NULL);
 
-                memset(&stats, 0, sizeof(stats_t));
-                stats.start = (uint32_t)ts;
-                count = interval = ival;
-        } else {
-                count = 0;
-        }
+        memset(&stats, 0, sizeof(stats_t));
+        stats.start = (uint32_t)ts;
+        counter = STATS_INTERVAL;
 }
 
 
@@ -45,15 +39,15 @@ void stats_init(int ival)
  */
 void stats_second(void)
 {
-        if (count) {
-                --count;
+        if (counter) {
+                --counter;
                 
-                if (!count) {
+                if (!counter) {
                         time_t ts = time(NULL);
                 
                         stats.now = (uint32_t)ts;
                         radar_send_stats();
-                        count = interval;
+                        counter = STATS_INTERVAL;
                 }
         }
 }
