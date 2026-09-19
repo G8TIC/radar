@@ -41,7 +41,7 @@
 #include "qerror.h"
 
 
-#if 0
+#ifdef DEBUG
 #define DEBUG_BEAST
 #endif
 
@@ -237,9 +237,6 @@ void beast_reset_connection(void)
         
         reset_parser();
 
-        if (debug)
-                printf("beast_reset_connection(): BEAST connection reset... start retry timer...\n");
-        
         retry_count = BEAST_CONNECT_RETRY;
         chgconstate(BEAST_STATE_RETRY_WAIT);
 }
@@ -315,8 +312,10 @@ static int connect_socket(void)
         if (hostinfo == NULL) {
                 /* error in DNS lookup */
                 
+#ifdef DEBUG_BEAST
                 if (debug)
                         printf("connect_socket(): Unable to resolve %s: %s\n", hostname, hstrerror(h_errno));
+#endif
 
                 close(fd);
                 ++telemetry.connect_fail;
@@ -327,19 +326,26 @@ static int connect_socket(void)
 
                 if (connect(fd, (struct sockaddr *)&saddr, sizeof(saddr)) >= 0) {
                         ++telemetry.connect_success;
-                        
+
+#ifdef DEBUG_BEAST                        
                         if (debug)
                                 printf("connect_socket(): Connected to BEAST source: %s:%d\n", inet_ntoa(saddr.sin_addr), port);
+#endif
 
                         return fd;
                 } else {
+                
+#ifdef DEBUG_BEAST
                         int save = errno;
+#endif
                 
                         close(fd);
                         ++telemetry.connect_fail;
-                        
+
+#ifdef DEBUG_BEAST                        
                         if (debug)
                                 printf("connect_socket(): Connect to BEAST source: %s:%d failed %s (%d)\n", inet_ntoa(saddr.sin_addr), port, strerror(save), save);
+#endif
                 }
         }
         
@@ -490,8 +496,11 @@ void beast_second(void)
                         if (retry_count) {
                                 --retry_count;
                                 if (!retry_count) {
+                                
+#ifdef DEBUG_BEAST
                                         if (debug)
                                                 printf("beast_second(): change state to allow re-connect\n");
+#endif
                                         chgconstate(BEAST_STATE_DISCONNECTED);
                                 }
                         }

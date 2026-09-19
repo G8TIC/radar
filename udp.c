@@ -27,6 +27,7 @@
 #include <linux/socket.h>
 #include <linux/ip.h>
 
+#include "radar.h"
 #include "defs.h"
 #include "udp.h"
 #include "hex.h"
@@ -37,14 +38,14 @@
  * external variables
  */
 extern int debug;
-extern int reset_udp;
+extern volatile int reset_udp;
 
 
 /*
  * local variables
  */
 static enum udpstate state;
-static int udp_fd;
+static int udp_fd = -1;
 static char hostname[HOSTNAME_LEN+1];
 static int qos;
 static int retry = 0;
@@ -52,7 +53,6 @@ static int rebind_interval = 0;
 static int rebind = 0;
 static struct hostent *hostinfo;
 static struct sockaddr_in dest;
-
 
 /*
  * chgstate() - change state with optional debugging
@@ -71,9 +71,9 @@ static void chgstate(enum udpstate newstate)
  */
 static void reset_connection(void)
 {
-        if (udp_fd) {
+        if (udp_fd >= 0) {
                 close(udp_fd);
-                udp_fd = 0;
+                udp_fd = -1;
         }
 
         if (debug)
@@ -205,6 +205,11 @@ void udp_second(void)
                         if (make_socket()) {
                                 rebind = rebind_interval ? rebind_interval : 0;
                                 chgstate(UDP_STATE_RUN);
+
+                                 /* announce our presence with two keep-alive messages */
+                                radar_send_keepalive();
+                                radar_send_keepalive();
+
                         } else {
                                 reset_connection();
                         }
@@ -216,8 +221,10 @@ void udp_second(void)
                                 --rebind;
                         
                                 if (!rebind) {
-                                        if (udp_fd)
+                                        if (udp_fd >= 0) {
                                                 close(udp_fd);
+                                                udp_fd = -1;
+                                        }
                                         chgstate(UDP_STATE_IDLE);
                                 }
                         }
@@ -250,8 +257,8 @@ void udp_reset(void)
  */
 void udp_close(void)
 {
-        if (udp_fd) {
+        if (udp_fd >= 0) {
                 close(udp_fd);
-                udp_fd = 0;
+                udp_fd = -1;
         }
 }

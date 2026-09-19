@@ -72,7 +72,7 @@ extern int debug;
 extern int protocol;
  
 telemetry_t telemetry;
-static int counter;
+static int counter = 15;
 static char path[64];
 static FILE * tempf = NULL;
 
@@ -239,8 +239,7 @@ void telemetry_init(void)
         telemetry.sizeof_long = sizeof(long);
         telemetry.sizeof_long_long = sizeof(long long);
         telemetry.sizeof_time_t = sizeof(time_t);
-                
-        counter = TELEMETRY_INTERVAL + (TELEMETRY_INTERVAL / 2);	/* avoid stats updates */
+
 }
 
 

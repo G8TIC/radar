@@ -16,9 +16,6 @@
 #include "dupe.h"
 
 
-extern int debug;
-
-
 /*
  * a list of duplicate messages
  */

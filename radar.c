@@ -185,6 +185,11 @@
 #include "qerror.h"
 
 
+#ifdef DEBUG
+#define DEBUG_RADAR
+#endif
+
+
 /*
  * global variables
  */
@@ -315,7 +320,9 @@ static void reset_buffer(void)
 static void send_mode_ss(radar_mode_ss_t *bp)
 {
         if (bp) {
+#ifdef DEBUG_RADAR
                 uint8_t df = bp->data[0] >> 3;
+#endif
         
                 bp->key = key;							/* API key */
                 bp->ts = ustime();						/* timestamp uS */
@@ -336,9 +343,12 @@ static void send_mode_ss(radar_mode_ss_t *bp)
                 /* local stats */
                 ++udp_count;
                 byte_count += sizeof(radar_mode_ss_t);
-                
+
+#ifdef DEBUG_RADAR   
                 if (debug)
                         printf("send_mode_ss(): df=%d\n", df);
+#endif
+
         }
 }
 
@@ -412,16 +422,18 @@ void radar_send_multiframe(void)
                 size = sizeof(radar_data_t) * num;				/* size of data */
                 memcpy(mp->data, radar_data, size);				/* copy data */
                 
-                bp += size;							/* point to auth tag location */
+                bp += size;							/* point past data for authtag */
 
-                authtag_sign(bp, AUTHTAG_LEN, buf, bp-buf);			/* sign with auth tag */
+                authtag_sign(bp, AUTHTAG_LEN, buf, bp-buf);			/* add the authtag */
 
-                bp += AUTHTAG_LEN;						/* add auth tag to length */
+                bp += AUTHTAG_LEN;						/* add authtag to length */
 
-                size = bp - buf;						/* final size to send */
+                size = bp - buf;						/* final size to send on the wire */
 
+#ifdef DEBUG_RADAR
                 if (debug >= 2)
                         printf("radar_send_multiframe(): num=%d  size=%d\n", num, size);
+#endif
 
                 udp_send(buf, size);						/* send to aggregator */
 
@@ -456,7 +468,7 @@ void radar_send_keepalive(void)
         msg.patch = VERSION_PATCH;
         
         /* add auth tag */
-        authtag_sign(&msg.atag[0], AUTHTAG_LEN, &msg, sizeof(radar_keepalive_t) - AUTHTAG_LEN);
+        authtag_sign(msg.atag, AUTHTAG_LEN, &msg, sizeof(radar_keepalive_t) - AUTHTAG_LEN);
                 
         /* send to aggregator */
         udp_send(&msg, sizeof(radar_keepalive_t));
@@ -538,7 +550,7 @@ void radar_process_beast_frame(uint8_t mlat[MLAT_LEN], uint8_t rssi, uint8_t *da
 
                 if (len == MODE_ES_LEN) {						/* Mode-S Extended message (14 bytes) */
 
-                        if ( (df >= 17 && df <= 22) || everything ){
+                        if ( (df >= 16 && df <= 22) || everything ){
                                 int dupe;
                         
                                 dupe = dupe_check_es(data);				/* duplicate check */
@@ -555,32 +567,13 @@ void radar_process_beast_frame(uint8_t mlat[MLAT_LEN], uint8_t rssi, uint8_t *da
                                                  * multi-frame mode: we concatenate multiple ADS-B messages until we
                                                  * exceed the buffer size or timeout on read
                                                  */
-
-#if 0
-                                                static uint64_t now, start;
-                                                uint32_t offset;
-                                        
-                                                now = ustime();
                                                 
-                                                if (num == 0) {
-                                                        /* remember the start time on the first frame */
-                                                        start = now;
-                                                        offset = 0;
-                                                } else {
-                                                        /* compute offset from start for rest of frames */
-                                                        offset = (uint32_t)(now - start);
-                                                }
-                                                 
-                                                radar_data[num].offset = offset;
-#endif
-
-
-                                                
+                                                /* copy one message to buffer */
                                                 memcpy(&radar_data[num].mlat, mlat, MLAT_LEN);
                                                 radar_data[num].rssi = rssi;
                                                 memcpy(&radar_data[num].data, data, MODE_ES_LEN);
                                                 
-                                                ++num;
+                                                ++num;					/* bump count */
 
                                                 if (num >= RADAR_MAX_MULTIFRAME) {	/* buffer full? send now */
                                                         radar_send_multiframe();
@@ -610,8 +603,11 @@ void radar_process_beast_frame(uint8_t mlat[MLAT_LEN], uint8_t rssi, uint8_t *da
                                 dupe = dupe_check_ss(data);
 
                                 if (dupe) {
+
+#ifdef DEBUG_RADAR
                                         if (debug > 2)
                                                 printf("radar_process(): not sending duplicate SS\n");
+#endif
                                 
                                         ++dupe_ss_count;
                                         ++stats.dupe_ss;
@@ -888,7 +884,7 @@ int main(int argc, char *argv[])
                 if (gid) {
                         if (setgid(gid) == 0) {
                                 ;
-#if 0
+#ifdef DEBUG_RADAR
                                 if (!isdaemon)
                                         printf("radar: setgid(): set GID to %d\n", gid);
 #endif
@@ -905,7 +901,7 @@ int main(int argc, char *argv[])
                 if (uid) {
                         if (setuid(uid) == 0) {
                                 ;
-#if 0
+#ifdef DEBUG_RADAR
                                 if (!isdaemon)
                                          printf("radar: setuid(): set UID to %d\n", uid);
 #endif
@@ -984,13 +980,6 @@ int main(int argc, char *argv[])
                         printf("Using single-frame mode: One ADS-B Extended Squitter per UDP\n");
                 }
         }
-
-
-        /*
-         * announce our presence with two keep-alive messages 
-         */
-        radar_send_keepalive();
-        radar_send_keepalive();
 
 
         /*
