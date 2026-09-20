@@ -91,15 +91,12 @@
  *
  *
  *
- * COPYRIGHT
+ * COPYRIGHT & LICENSE
  *
- * Copyright (C) 2023-2026 by Michael J. Tubby B.Sc. MIET and 1090MHz Solutions Ltd.
- * trading as "1090MHz UK" - All Rights Reserved.
+ * Copyright (C) 2023-2026 by Michael J. Tubby B.Sc. MIET G8TIC and 1090MHz Solutions Ltd.
+ * trading as "1090MHz UK".
  *
- * 
- * LICENSE
- *
- * See LICENSE.md
+ * Licensed under the GPLv3 license - See LICENSE.md
  *
  *
  * USAGE
@@ -1123,4 +1120,3 @@ int main(int argc, char *argv[])
         cleanup();
         exit(EXIT_SUCCESS);
 }
-
