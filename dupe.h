@@ -2,7 +2,7 @@
  * dupe.h -- input de-duplicator
  */
 
-#ifndef _DEPE_H
+#ifndef _DUPE_H
 #define _DUPE_H
 
 #include <string.h>
